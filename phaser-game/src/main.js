@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import GameScene from './scenes/GameScene';
 
+//Una prueba para GIthuB
 const config = {
     type: Phaser.AUTO,
     width: 800,
