@@ -10,6 +10,8 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         this.lastDir = 'down';
 
         this.setCollideWorldBounds(true);
+
+        this.setScale(2);
     }
 
     update(cursors) {
