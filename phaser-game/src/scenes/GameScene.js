@@ -6,8 +6,10 @@ export default class GameScene extends Phaser.Scene {
     }
 
     preload() {
-       
+
+        
         //KRIS
+            this.load.audio('player_hit', '/src/assets/sounds/snd_hurt.wav');
         // DOWN
         this.load.image('down0', '/src/assets/sprites/spr_kris_down/spr_kris_0.png');
         this.load.image('down1', '/src/assets/sprites/spr_kris_down/spr_kris_1.png');
@@ -36,27 +38,84 @@ export default class GameScene extends Phaser.Scene {
                 frameRate: 6,
                 repeat: -1
             });
-            
+
         };
-        
 
-        makeAnim('walk-down', ['down0','down1']);
-        makeAnim('walk-up', ['up0','up1']);
-        makeAnim('walk-left', ['left0','left1']);
-        makeAnim('walk-right', ['right0','right1']);
 
-         makeAnim('monster-walk', ['monster_right_0', 'monster_right_1']);
+        makeAnim('walk-down', ['down0', 'down1']);
+        makeAnim('walk-up', ['up0', 'up1']);
+        makeAnim('walk-left', ['left0', 'left1']);
+        makeAnim('walk-right', ['right0', 'right1']);
+
+        makeAnim('monster-walk', ['monster_right_0', 'monster_right_1']);
         // jugador
         this.player = new Player(this, this.cameras.main.width / 2, this.cameras.main.height / 2);
         this.cursors = this.input.keyboard.createCursorKeys();
 
         // enemigo
-          this.monster = new Monster(this, 100, 300, 'monster_right_0');
-          this.monster.play('monster-walk');
+        this.monster = new Monster(this, 100, 300, 'monster_right_0');
+        this.monster.play('monster-walk');
+
+
+        this.player.lastDamageTime = 0;
+
+        this.hitSound = this.sound.add('player_hit'); // cargar sonido en preload
+
+        this.physics.add.collider(this.player, this.monster, (player, monster) => {
+            let ahora = this.time.now;
+            if (ahora - player.lastDamageTime > 1000) {
+                player.takeDamage(10);
+                player.lastDamageTime = ahora;
+
+                // Reproducir sonido de daño
+                player.scene.hitSound.play();
+
+                // Activar parpadeo / invulnerabilidad
+                player.startInvincibility(1000);
+
+
+                // === Knockback ===
+                const pushDistance = 32; // distancia base, similar a hitmovespeed
+                const pushDuration = 150; // ms para que sea rápido pero visible
+
+                // Calculamos vector desde el enemigo hacia el jugador
+                let dx = player.x - monster.x;
+                let dy = player.y - monster.y;
+                let distancia = Math.sqrt(dx * dx + dy * dy);
+                if (distancia === 0) distancia = 1; // evitar división por cero
+                dx /= distancia;
+                dy /= distancia;
+
+                // Objetivo final del knockback
+                let targetX = player.x + dx * pushDistance;
+                let targetY = player.y + dy * pushDistance;
+
+                // Usamos tween para mover suavemente y respetar colisiones
+                this.tweens.add({
+                    targets: player,
+                    x: targetX,
+                    y: targetY,
+                    duration: pushDuration,
+                    ease: 'Power1',
+                    onUpdate: () => {
+                        // Opcional: revisar colisiones con world bounds
+                        player.body.blocked.up && (player.y = player.body.y);
+                        player.body.blocked.down && (player.y = player.body.y);
+                        player.body.blocked.left && (player.x = player.body.x);
+                        player.body.blocked.right && (player.x = player.body.x);
+                    }
+                });
+
+                console.log("Jugador recibió daño y knockback aplicado");
+            }
+        }, null, this);
+
+
+
     }
 
     update() {
         this.player.update(this.cursors);
-           this.monster.actualizar();
+        this.monster.actualizar();
     }
 }
