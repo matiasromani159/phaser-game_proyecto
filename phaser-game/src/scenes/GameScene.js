@@ -6,10 +6,12 @@ export default class GameScene extends Phaser.Scene {
     }
 
     preload() {
+        this.load.audio('snd_board', '/src/assets/sounds/tenna_island.ogg');
 
-        
+        this.load.image('healthbar', '/src/assets/sprites/spr_hp_bar.png');
+
         //KRIS
-            this.load.audio('player_hit', '/src/assets/sounds/snd_hurt.wav');
+        this.load.audio('player_hit', '/src/assets/sounds/snd_hurt.wav');
         // DOWN
         this.load.image('down0', '/src/assets/sprites/spr_kris_down/spr_kris_0.png');
         this.load.image('down1', '/src/assets/sprites/spr_kris_down/spr_kris_1.png');
@@ -30,6 +32,15 @@ export default class GameScene extends Phaser.Scene {
     }
 
     create() {
+
+        //musica loop
+        this.music = this.sound.add('snd_board', {
+            loop: true,
+            volume: 0.5
+        });
+
+        this.music.play();
+
         // animaciones
         const makeAnim = (key, frames) => {
             this.anims.create({
