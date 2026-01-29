@@ -33,6 +33,10 @@ export default class GameScene extends Phaser.Scene {
 
     create() {
 
+        //GUARDAR PERO ES TEMPORAL 
+this.keyG = this.input.keyboard.addKey(
+    Phaser.Input.Keyboard.KeyCodes.G
+);
 
         // ===== CONTADOR DE TIEMPO =====
         this.segundos = 0;
@@ -144,8 +148,13 @@ export default class GameScene extends Phaser.Scene {
 
     }
 
-    update() {
-        this.player.update(this.cursors);
-        this.monster.actualizar();
+   update() {
+    this.player.update(this.cursors);
+    this.monster.actualizar();
+
+    if (Phaser.Input.Keyboard.JustDown(this.keyG)) {
+        this.guardarPartida();
     }
+}
+
 }
