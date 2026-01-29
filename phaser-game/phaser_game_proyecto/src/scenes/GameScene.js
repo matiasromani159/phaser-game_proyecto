@@ -155,6 +155,29 @@ this.keyG = this.input.keyboard.addKey(
     if (Phaser.Input.Keyboard.JustDown(this.keyG)) {
         this.guardarPartida();
     }
+
+    
+}
+guardarPartida() {
+    const saveData = {
+        tiempo: this.segundos,
+       // vida: this.player.hp,   // asumo que Player tiene hp
+        // x: this.player.x,
+        // y: this.player.y
+    };
+
+    fetch("http://localhost:3000/phaser-game/php/guardar.php", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(saveData)
+    })
+    .then(res => res.json())
+    .then(data => {
+        console.log("Partida guardada:", data);
+    })
+    .catch(err => console.error(err));
 }
 
 }
