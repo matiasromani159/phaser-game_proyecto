@@ -33,6 +33,25 @@ export default class GameScene extends Phaser.Scene {
 
     create() {
 
+
+        // ===== CONTADOR DE TIEMPO =====
+        this.segundos = 0;
+
+        this.textoTiempo = this.add.text(56, 56, 'Tiempo: 0', {
+            fontSize: '18px',
+            fill: '#ffffff'
+        }).setScrollFactor(0);
+
+        // Evento cada segundo
+        this.time.addEvent({
+            delay: 1000,
+            loop: true,
+            callback: () => {
+                this.segundos++;
+                this.textoTiempo.setText('Tiempo: ' + this.segundos);
+            }
+        });
+
         //musica loop
         this.music = this.sound.add('snd_board', {
             loop: true,
