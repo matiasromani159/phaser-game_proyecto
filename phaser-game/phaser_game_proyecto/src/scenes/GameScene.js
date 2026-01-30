@@ -166,7 +166,7 @@ guardarPartida() {
         // y: this.player.y
     };
 
-    fetch("http://localhost:3000/phaser-game/php/guardar.php", {
+        fetch("http://localhost:3000/php/guardar.php", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
