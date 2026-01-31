@@ -6,6 +6,8 @@ export default class GameScene extends Phaser.Scene {
     }
 
     preload() {
+//bryan hizo todo
+
         this.load.audio('snd_board', '/src/assets/sounds/tenna_island.ogg');
 
         this.load.image('healthbar', '/src/assets/sprites/spr_hp_bar.png');
