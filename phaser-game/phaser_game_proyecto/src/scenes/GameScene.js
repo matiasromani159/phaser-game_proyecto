@@ -169,7 +169,7 @@ guardarPartida() {
         // y: this.player.y
     };
 
-        fetch("http://localhost:3000/php/guardar.php", {
+        fetch("/php/guardar.php", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
