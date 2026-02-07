@@ -7,6 +7,7 @@ export default class GameScene extends Phaser.Scene {
     }
 
     preload() {
+        //La habeis liado
         // Sonidos
         this.load.audio('snd_board', '/src/assets/sounds/tenna_island.ogg');
         this.load.audio('player_hit', '/src/assets/sounds/snd_hurt.wav');
