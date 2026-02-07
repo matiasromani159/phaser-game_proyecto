@@ -11,8 +11,8 @@ const config = {
         default: 'arcade',
         arcade: { debug: true }
     },
-    pixelArt: true,     // 👈 importante para pixel art
-    roundPixels: true   // 👈 opcional, evita temblor de sprites
+    pixelArt: true,     // para pixel art
+    roundPixels: true   // evita temblor de sprites
 };
 
 
