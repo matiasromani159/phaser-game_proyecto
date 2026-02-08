@@ -6,7 +6,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         scene.add.existing(this);
         scene.physics.add.existing(this);
 
-        this.vida = 100;
+        this.vida = 10;
         this.vidaMax = 100;
 
         // Barra de vida
@@ -31,6 +31,9 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         this.attackHitbox = scene.add.rectangle(this.x, this.y, 30, 30, 0xff0000, 0).setOrigin(0.5);
         scene.physics.add.existing(this.attackHitbox);
         this.attackHitbox.body.enable = false;
+
+        //Muerte
+        this.isDead = false;
     }
 
     update(cursors) {
@@ -68,6 +71,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         }
 
         this.drawHealthBar();
+        if (this.isDead) return;
     }
 
     attack() {
@@ -106,13 +110,38 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     takeDamage(dano) {
-        this.vida -= dano;
-        if (this.vida <= 0) {
-            this.vida = 0;
-            console.log("Jugador muerto");
-        }
-        this.startInvincibility(1000);
+    if (this.isDead || this.isInvincible) return;
+
+    this.vida -= dano;
+
+    if (this.vida <= 0) {
+        this.vida = 0;
+        this.die();
+        return;
     }
+
+    this.startInvincibility(1000);
+}
+
+die() {
+    this.isDead = true;
+
+    // Detener movimiento
+    this.setVelocity(0);
+    this.body.enable = false;
+
+    // Quitar hitbox de ataque
+    this.attackHitbox.body.enable = false;
+
+    // Parar animaciones
+    this.anims.stop();
+    this.setTexture('down0'); // o sprite de muerte si luego quieres
+
+    // Avisar a la escena
+    this.scene.playerDied();
+}
+
+
 
     drawHealthBar() {
         this.barra.clear();

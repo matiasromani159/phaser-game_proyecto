@@ -1,12 +1,13 @@
 import Phaser from 'phaser';
 import GameScene from './scenes/GameScene';
+import GameOverScene from './scenes/GameOverScene.js';
 
 //Una prueba para GIthuB
 const config = {
     type: Phaser.AUTO,
     width: 800,
     height: 600,
-    scene: [GameScene],
+    scene: [GameScene, GameOverScene],
     physics: {
         default: 'arcade',
         arcade: { debug: true }

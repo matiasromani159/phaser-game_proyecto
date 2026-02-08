@@ -23,4 +23,23 @@ export default class Monster extends Phaser.Physics.Arcade.Sprite {
     actualizar() {
         this.setVelocityX(this.speed * this.direction);
     }
+
+    die() {
+    // Evitar que muera dos veces
+    if (this.isDead) return;
+    this.isDead = true;
+
+    // Detener movimiento y colisiones
+    this.setVelocity(0, 0);
+    this.body.enable = false;
+
+    // Reproducir animación de muerte
+    this.play('monster-die');
+
+    // Cuando termine la animación → destruir
+    this.once('animationcomplete', () => {
+        this.destroy();
+    });
+}
+
 }
