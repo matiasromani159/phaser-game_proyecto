@@ -106,7 +106,7 @@ export default class GameOverScene extends Phaser.Scene {
             ease: 'Linear'
         });
         // Aparece línea de texto debajo del sprite
-        this.showTextLine("Mantén tu determinación", this.cameras.main.centerX - 80, this.cameras.main.centerY + 100, 50);
+        this.showTextLine("La has liado", this.cameras.main.centerX - 80, this.cameras.main.centerY + 100, 50);
 
 
 
@@ -123,7 +123,6 @@ export default class GameOverScene extends Phaser.Scene {
         }).setResolution(10)
         
 .setX(x - 50);  ;
-
 
 
         this.textSound = this.sound.add('snd_txtasg');

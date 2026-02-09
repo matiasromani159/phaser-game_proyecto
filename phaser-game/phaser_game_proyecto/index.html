@@ -5,16 +5,46 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>phaser-game</title>
+    <style>
+      @font-face {
+        font-family: 'UndertaleFont';  
+        src: url('src/assets/fonts/8bitoperator_jve.woff') format('woff');
+      }
+
+      /* Estilos básicos para centrar el login */
+      #loginUI {
+        display: none; /* oculto por defecto */
+        position: absolute;
+        top: 40%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0,0,0,0.7);
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
+      }
+
+      #loginUI input {
+        display: block;
+        margin: 10px auto;
+        padding: 5px;
+      }
+
+      #loginUI button {
+        padding: 5px 15px;
+      }
+    </style>
   </head>
   <body>
-    <style>
-@font-face {
-    font-family: 'UndertaleFont';  
-    src: url('src/assets/fonts/8bitoperator_jve.woff') format('woff');
-}
-
-</style>
     <div id="app"></div>
+
+    <!-- UI de login -->
+    <div id="loginUI">
+      <input id="user" placeholder="Usuario">
+      <input id="pass" type="password" placeholder="Contraseña">
+      <button id="loginBtn">Entrar</button>
+    </div>
+
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
