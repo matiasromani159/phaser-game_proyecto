@@ -9,7 +9,8 @@ const config = {
     type: Phaser.AUTO,
     width: 800,
     height: 600,
-    scene: [AuthScene, LoginScene, GameScene, GameOverScene],
+//    scene: [AuthScene, LoginScene, GameScene, GameOverScene],
+scene: [GameScene, GameOverScene],
     physics: {
         default: 'arcade',
         arcade: { debug: true }
