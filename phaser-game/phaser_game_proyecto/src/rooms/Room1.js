@@ -15,16 +15,16 @@ export default class Room1 extends BaseGameScene {
             playerSpawn: { x: 200, y: 200 },
 
             monsters: [
-                { x: 100, y: 300 },
-                { x: 400, y: 200 },
+                { x: 100, y:100 },              // Monster normal (sin type)
+                { type: 'flower', x: 300, y: 200 }, // Flor
             ],
 
-           doors: {
-    arriba:    null,
-    abajo:     { goTo: 'Room2', spawn: { x: 180, y: 36 } },
-    izquierda: null,
-    derecha:   null,
-}
+            doors: {
+                arriba:    null,
+                abajo:     { goTo: 'Room2', spawn: { x: 180, y: 36 } },
+                izquierda: null,
+                derecha:   null,
+            }
         };
     }
 }
