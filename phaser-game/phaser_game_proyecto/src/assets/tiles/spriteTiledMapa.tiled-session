@@ -40,13 +40,13 @@
     "map.tileWidth": 36,
     "map.width": 12,
     "openFiles": [
-        "MapaEscena.tmx",
-        "tipe.tsx"
+        "tipe.tsx",
+        "MapaEscena.tmx"
     ],
     "project": "",
     "recentFiles": [
-        "MapaEscena.tmx",
-        "tipe.tsx"
+        "tipe.tsx",
+        "MapaEscena.tmx"
     ],
     "tileset.lastUsedFormat": "tsx",
     "tileset.tileSize": {

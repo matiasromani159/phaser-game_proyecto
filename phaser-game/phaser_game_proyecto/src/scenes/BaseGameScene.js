@@ -2,10 +2,6 @@ import Player from '../entities/player.js';
 import Monster from '../entities/monster.js';
 import MonsterFlower from '../entities/MonsterFlower.js';
 
-/**
- * BaseGameScene — Clase padre para todas las rooms.
- * Cada room hija solo necesita sobreescribir getRoomConfig().
- */
 export default class BaseGameScene extends Phaser.Scene {
 
     // ─────────────────────────────────────────────
@@ -17,10 +13,11 @@ export default class BaseGameScene extends Phaser.Scene {
             tilesetName: 'tipe',
             tilesetImage: 'tipe.png',
             music: 'tenna_island.ogg',
+            displayName: 'Isla de Suelo',
             playerSpawn: { x: 200, y: 200 },
+            savepoints: [],
             monsters: [
                 { type: 'monster', x: 100, y: 300 },
-                // { type: 'flower', x: 300, y: 200 },
             ],
             doors: {
                 arriba:    null,
@@ -68,6 +65,14 @@ export default class BaseGameScene extends Phaser.Scene {
             this.load.image(`telegraph_${i}`, `/src/assets/sprites/spr_telegraph/spr_telegraph_${i}.png`);
         this.load.image('spr_smallbullet',         '/src/assets/sprites/spr_smallbullet.png');
         this.load.image('spr_smallbullet_outline', '/src/assets/sprites/spr_smallbullet_outline.png');
+
+        // Savepoint
+        for (let i = 0; i < 6; i++)
+            this.load.image(`savepoint_${i}`, `/src/assets/sprites/spr_savepoint/spr_savepoint_${i}.png`);
+
+        // Corazon y sonido de guardado (pre-cargados para evitar parpadeo)
+        this.load.image('spr_heart', '/src/assets/sprites/spr_heart.png');
+        this.load.audio('snd_save',  '/src/assets/sounds/snd_save.wav');
     }
 
     // ─────────────────────────────────────────────
@@ -76,15 +81,16 @@ export default class BaseGameScene extends Phaser.Scene {
     create(data) {
         const cfg = this.getRoomConfig();
 
-        this.gameIsOver = false;
+        this.gameIsOver    = false;
         this.cambiandoRoom = false;
-        this.segundos = data?.segundos ?? 0;
+        this.enSaveMenu    = false;
+        this.segundos      = data?.segundos ?? 0;
 
         this._crearMapa(cfg);
         this._crearAnimaciones();
 
-        this.keyZ = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
-        this.keyG = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.G);
+        this.keyZ    = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
+        this.keyG    = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.G);
         this.cursors = this.input.keyboard.createCursorKeys();
 
         this.textoTiempo = this.add.text(16, 16, 'Tiempo: ' + this.segundos, {
@@ -99,6 +105,7 @@ export default class BaseGameScene extends Phaser.Scene {
             }
         });
 
+        // Musica
         const currentMusic    = this.registry.get('currentMusic');
         const currentMusicKey = this.registry.get('currentMusicKey');
 
@@ -115,6 +122,7 @@ export default class BaseGameScene extends Phaser.Scene {
         this.attackSound = this.sound.add('snd_sword', { volume: 0.5 });
         this.hitSound    = this.sound.add('player_hit');
 
+        // Jugador
         const spawn = data?.playerSpawn ?? cfg.playerSpawn;
         this.player = new Player(this, spawn.x, spawn.y);
         this.player.lastDamageTime = 0;
@@ -124,19 +132,21 @@ export default class BaseGameScene extends Phaser.Scene {
 
         // Grupos
         this.monsters = this.physics.add.group();
-        this.flowers  = [];   // Array aparte — la flor no necesita grupo de física
+        this.flowers  = [];
         this.pellets  = this.physics.add.group();
 
         cfg.monsters.forEach(m => {
             if (m.type === 'flower') {
-                const flower = new MonsterFlower(this, m.x, m.y);
-                this.flowers.push(flower);
+                this.flowers.push(new MonsterFlower(this, m.x, m.y));
             } else {
                 const monster = new Monster(this, m.x, m.y, 'monster_right_0');
                 monster.play('monster-walk');
                 this.monsters.add(monster);
             }
         });
+
+        // Savepoints
+        this._crearSavepoints(cfg);
 
         this._crearColisiones();
 
@@ -147,13 +157,16 @@ export default class BaseGameScene extends Phaser.Scene {
         if (!data?.fromGameOver) {
             this.cameras.main.fadeIn(500, 0, 0, 0);
         }
+
+        // Listener para cuando SaveScene cierre y esta escena se reanude
+        this.events.on('resume', this._alReanudar, this);
     }
 
     // ─────────────────────────────────────────────
     // UPDATE
     // ─────────────────────────────────────────────
     update(time, delta) {
-        if (this.gameIsOver || this.cambiandoRoom) return;
+        if (this.gameIsOver || this.cambiandoRoom || this.enSaveMenu) return;
 
         // Tiles animados
         this.animatedTiles.forEach(anim => {
@@ -178,14 +191,96 @@ export default class BaseGameScene extends Phaser.Scene {
         this._checkSwordVsFlowers();
         this.pellets.getChildren().forEach(p => { if (p.updateColor) p.updateColor(delta); });
 
-        if (Phaser.Input.Keyboard.JustDown(this.keyG)) this.guardarPartida();
-        if (Phaser.Input.Keyboard.JustDown(this.keyZ)) this.player.attack();
+        if (Phaser.Input.Keyboard.JustDown(this.keyG)) this.abrirSaveMenu();
+
+        // ── Leer Z una sola vez y decidir qué hace ──────────────
+        // JustDown solo es true UNA vez por pulsación, por eso hay
+        // que leerlo aquí y pasarlo a quien corresponda, no llamarlo
+        // dos veces en distintos lugares.
+        const zPressed = Phaser.Input.Keyboard.JustDown(this.keyZ);
+
+        if (zPressed) {
+            if (this._estaCercaDeSavepoint()) {
+                // Cerca de un savepoint: Z abre el menú, NO ataca
+                this.abrirSaveMenu();
+            } else {
+                // Lejos: Z ataca normal
+                this.player.attack();
+            }
+        }
 
         this._checkBordes();
     }
 
     // ─────────────────────────────────────────────
-    // MÉTODOS PRIVADOS DE SETUP
+    // SAVEPOINTS
+    // ─────────────────────────────────────────────
+ _crearSavepoints(cfg) {
+    this.savepointSprites = [];
+
+    if (!cfg.savepoints || cfg.savepoints.length === 0) return;
+
+    if (!this.anims.exists('savepoint-idle')) {
+        this.anims.create({
+            key: 'savepoint-idle',
+            frames: Array.from({ length: 6 }, (_, i) => ({ key: `savepoint_${i}` })),
+            frameRate: 8,
+            repeat: -1
+        });
+    }
+
+    cfg.savepoints.forEach(sp => {
+        // Usar physics.add.sprite en lugar de add.sprite para tener colisión
+        const sprite = this.physics.add.sprite(sp.x, sp.y, 'savepoint_0');
+        sprite.play('savepoint-idle');
+        sprite.setScale(1.5);             // ← tamaño, ajusta a tu gusto
+        sprite.setImmovable(true);      // ← no se mueve cuando el jugador choca
+        sprite.body.allowGravity = false;
+        this.savepointSprites.push(sprite);
+    });
+
+    // Colisión física con el jugador
+    this.physics.add.collider(this.player, this.savepointSprites);
+}
+
+    /** Devuelve true si el jugador está dentro del rango de algún savepoint */
+    _estaCercaDeSavepoint() {
+        if (!this.savepointSprites || this.savepointSprites.length === 0) return false;
+        const RANGO = 40;
+        return this.savepointSprites.some(sp =>
+            Phaser.Math.Distance.Between(this.player.x, this.player.y, sp.x, sp.y) < RANGO
+        );
+    }
+
+    // ─────────────────────────────────────────────
+    // ABRIR SAVE MENU
+    // ─────────────────────────────────────────────
+    abrirSaveMenu() {
+        if (this.enSaveMenu) return;
+        this.enSaveMenu = true;
+
+        if (this.timerEvent) this.timerEvent.paused = true;
+
+        const cfg = this.getRoomConfig();
+
+        this.scene.pause();
+        this.scene.launch('SaveScene', {
+            callerScene : this.scene.key,
+            segundos    : this.segundos,
+            playerHP    : this.player.vida,
+            roomName    : cfg.displayName ?? this.scene.key,
+            playerName  : this.registry.get('playerName')  ?? 'KRIS',
+            playerLevel : this.registry.get('playerLevel') ?? 1
+        });
+    }
+
+    _alReanudar() {
+        this.enSaveMenu = false;
+        if (this.timerEvent) this.timerEvent.paused = false;
+    }
+
+    // ─────────────────────────────────────────────
+    // SETUP PRIVADO
     // ─────────────────────────────────────────────
     _crearMapa(cfg) {
         const roomKey = this.scene.key;
@@ -242,7 +337,6 @@ export default class BaseGameScene extends Phaser.Scene {
             makeAnim(`attack-${dir}`, [`${dir}Attack0`, `${dir}Attack1`, `${dir}Attack2`], 10, 0)
         );
 
-        // MonsterFlower
         makeAnim('flower-idle',      ['flower_0', 'flower_1'], 4);
         makeAnim('flower-telegraph', ['telegraph_0', 'telegraph_1'], 8);
     }
@@ -251,7 +345,6 @@ export default class BaseGameScene extends Phaser.Scene {
         this.physics.add.collider(this.player,   this.wallsLayer);
         this.physics.add.collider(this.monsters, this.wallsLayer);
 
-        // Monster normal → jugador
         this.physics.add.collider(this.player, this.monsters, (player, monster) => {
             const ahora = this.time.now;
             if (ahora - player.lastDamageTime > 1000) {
@@ -275,12 +368,10 @@ export default class BaseGameScene extends Phaser.Scene {
             }
         });
 
-        // Espada → monster normal
         this.physics.add.overlap(this.player.attackHitbox, this.monsters, (hitbox, monster) => {
             monster.die();
         });
 
-        // Pellet → jugador
         this.physics.add.overlap(this.player, this.pellets, (player, pellet) => {
             const ahora = this.time.now;
             if (ahora - player.lastDamageTime > 1000) {
@@ -291,13 +382,11 @@ export default class BaseGameScene extends Phaser.Scene {
             pellet.destroy();
         });
 
-        // Espada → flor (chequeamos bounds manualmente porque flowers es array, no grupo)
         this.physics.add.overlap(this.player.attackHitbox, this.pellets, (hitbox, pellet) => {
             pellet.destroy();
         });
     }
 
-    // La detección espada→flor va en update porque flowers es un array normal
     _checkSwordVsFlowers() {
         if (!this.player.attackHitbox?.active) return;
         const hitBounds = this.player.attackHitbox.getBounds();
@@ -310,7 +399,7 @@ export default class BaseGameScene extends Phaser.Scene {
     }
 
     // ─────────────────────────────────────────────
-    // DETECCIÓN DE BORDES
+    // BORDES Y TRANSICIONES
     // ─────────────────────────────────────────────
     _checkBordes() {
         const cfg  = this.getRoomConfig();
@@ -328,16 +417,11 @@ export default class BaseGameScene extends Phaser.Scene {
     _activarPuerta(door) {
         if (this.cambiandoRoom) return;
         this.cambiandoRoom = true;
-        console.log('activando puerta hacia:', door.goTo);
         this.cambiarRoom(door.goTo, door.spawn);
     }
 
-    // ─────────────────────────────────────────────
-    // TRANSICIÓN ENTRE ROOMS
-    // ─────────────────────────────────────────────
     cambiarRoom(roomKey, spawnPos) {
         if (this.timerEvent) this.timerEvent.remove();
-
         this.registry.set('playerHP', this.player.vida);
 
         this.cameras.main.fadeOut(400, 0, 0, 0);
@@ -359,21 +443,6 @@ export default class BaseGameScene extends Phaser.Scene {
         if (this.timerEvent) this.timerEvent.remove();
 
         this.registry.set('lastRoom', this.scene.key);
-
         this.scene.start('GameOverScene', { x: this.player.x, y: this.player.y });
-    }
-
-    // ─────────────────────────────────────────────
-    // GUARDAR PARTIDA
-    // ─────────────────────────────────────────────
-    guardarPartida() {
-        fetch('/php/guardar.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tiempo: this.segundos })
-        })
-        .then(res => res.json())
-        .then(data => console.log('Partida guardada:', data))
-        .catch(err => console.error(err));
     }
 }

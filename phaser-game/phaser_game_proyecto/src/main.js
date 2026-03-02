@@ -4,6 +4,7 @@ import Room2 from './rooms/Room2.js';
 import GameOverScene from './scenes/GameOverScene.js';
 import AuthScene from './scenes/AuthScene.js';
 import LoginScene from './scenes/LoginScene.js';
+import SaveScene from './scenes/SaveScene.js';
 
 //Una prueba para GIthuB
 const config = {
@@ -11,7 +12,7 @@ const config = {
     width: 432,
     height: 324,
     //    scene: [AuthScene, LoginScene, GameScene, GameOverScene],
-    scene: [Room1, Room2, GameOverScene],
+    scene: [Room1, Room2, GameOverScene, SaveScene],
     physics: {
         default: 'arcade',
         arcade: { debug: true }

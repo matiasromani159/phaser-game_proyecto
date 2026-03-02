@@ -12,11 +12,17 @@ export default class Room1 extends BaseGameScene {
             tilesetImage: 'tipe.png',
             music: 'tenna_island.ogg',
 
+            displayName: 'Room 1',              // ← nombre que aparece en el menú de guardado
+
             playerSpawn: { x: 200, y: 200 },
 
+            savepoints: [
+                { x: 150, y: 150 }              // ← posición del savepoint en el mapa (puedes poner varios)
+            ],
+
             monsters: [
-                { x: 100, y:100 },              // Monster normal (sin type)
-                { type: 'flower', x: 300, y: 200 }, // Flor
+                { x: 100, y: 100 },
+                { type: 'flower', x: 300, y: 200 },
             ],
 
             doors: {
