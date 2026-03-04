@@ -11,20 +11,15 @@ export default class Room1 extends BaseGameScene {
             tilesetName: 'tipe',
             tilesetImage: 'tipe.png',
             music: 'tenna_island.ogg',
-
-            displayName: 'Room 1',              // ← nombre que aparece en el menú de guardado
-
+            displayName: 'Room 1',
             playerSpawn: { x: 200, y: 200 },
-
             savepoints: [
-                { x: 150, y: 150 }              // ← posición del savepoint en el mapa (puedes poner varios)
+                { x: 150, y: 150 }
             ],
-
             monsters: [
                 { x: 100, y: 100 },
                 { type: 'flower', x: 300, y: 200 },
             ],
-
             doors: {
                 arriba:    null,
                 abajo:     { goTo: 'Room2', spawn: { x: 180, y: 36 } },
@@ -32,5 +27,16 @@ export default class Room1 extends BaseGameScene {
                 derecha:   null,
             }
         };
+    }
+
+    create(data) {
+        super.create(data); // ← importante, inicializa todo lo del padre
+
+        // Diálogo de prueba al entrar a la room
+        this.dialogue.show([
+            "Bienvenido a la Room 1./",
+            "Este es un \cRmensaje de prueba\c0./",
+            "Texto lento...^3 y ya está."
+        ]);
     }
 }

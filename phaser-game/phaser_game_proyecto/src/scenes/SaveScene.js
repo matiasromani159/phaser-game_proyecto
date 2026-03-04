@@ -14,9 +14,12 @@ export default class SaveScene extends Phaser.Scene {
             this.load.image('spr_heart', '/src/assets/sprites/spr_heart.png');
         if (!this.cache.audio.exists('snd_save'))
             this.load.audio('snd_save', '/src/assets/sounds/snd_save.wav');
+        if (!this.cache.audio.exists('snd_select'))
+    this.load.audio('snd_select', '/src/assets/sounds/snd_select.wav');
     }
 
     create(data) {
+        this.selectSound = this.sound.add('snd_select', { volume: 0.7 });
         this.callerScene = data?.callerScene ?? 'GameScene';
         this.segundos    = data?.segundos    ?? 0;
         this.playerHP    = data?.playerHP    ?? 100;
@@ -33,7 +36,7 @@ export default class SaveScene extends Phaser.Scene {
         this.keyX = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.X);
 
         this._buildUI();
-        this.cameras.main.fadeIn(250, 0, 0, 0);
+        //this.cameras.main.fadeIn(250, 0, 0, 0);
     }
 
     update() {
@@ -64,6 +67,15 @@ export default class SaveScene extends Phaser.Scene {
         }
     }
 
+    // ─────────────────────────────────────────────
+    // HELPER: crea texto con fuente y resolución correctas
+    // ─────────────────────────────────────────────
+    _addText(x, y, text, style) {
+        return this.add.text(x, y, text, style)
+            .setScrollFactor(0)
+            .setResolution(10);
+    }
+
     _buildUI() {
         const W = this.cameras.main.width;
         const H = this.cameras.main.height;
@@ -91,7 +103,7 @@ export default class SaveScene extends Phaser.Scene {
         g.strokeRect(px(64), py(59), (255-64)*d, (125-59)*d);
 
         const style = {
-            fontFamily: '"Courier New", Courier, monospace',
+            fontFamily: 'UndertaleFont',
             fontSize  : `${14*d}px`,
             color     : '#ffffff'
         };
@@ -101,18 +113,18 @@ export default class SaveScene extends Phaser.Scene {
         const secStr = sec < 10 ? '0' + sec : String(sec);
 
         // Posiciones sacadas directamente del Draw GML
-        this.nameText = this.add.text(px(70),  py(60), this.playerName,       style).setScrollFactor(0);
-        this.add.text(px(175), py(60), `LV ${this.playerLevel}`,   style).setScrollFactor(0);
-        this.add.text(px(210), py(60), `${min}:${secStr}`,          style).setScrollFactor(0);
-        this.add.text(px(70),  py(80), this.roomName,               style).setScrollFactor(0);
+        this.nameText = this._addText(px(70),  py(60), this.playerName,     style);
+        this._addText(px(175), py(60), `LV ${this.playerLevel}`,            style);
+        this._addText(px(210), py(60), `${min}:${secStr}`,                  style);
+        this._addText(px(70),  py(80), this.roomName,                       style);
 
-        this.btnSave   = this.add.text(px(85),  py(110), 'SAVE',   style).setScrollFactor(0);
-        this.btnReturn = this.add.text(px(175), py(110), 'RETURN', style).setScrollFactor(0);
+        this.btnSave   = this._addText(px(85),  py(110), 'SAVE',   style);
+        this.btnReturn = this._addText(px(175), py(110), 'RETURN', style);
 
-        this.savedText = this.add.text(
+        this.savedText = this._addText(
             px(85), py(110), 'File saved.',
             { ...style, color: '#ffff00' }
-        ).setScrollFactor(0).setVisible(false);
+        ).setVisible(false);
 
         // Cursor corazón: coord 0->(71,113)  coord 1->(161,113)
         this.heartPos = [
@@ -144,16 +156,16 @@ export default class SaveScene extends Phaser.Scene {
         }
     }
 
-    _moverCursor() {
-        this.tweens.add({
-            targets : this.heartCursor,
-            x       : this.heartPos[this.coord].x,
-            duration: 60,
-            ease    : 'Power1'
-        });
-        this._actualizarEstado();
-    }
-
+   _moverCursor() {
+    this.selectSound.play(); // ← aquí
+    this.tweens.add({
+        targets : this.heartCursor,
+        x       : this.heartPos[this.coord].x,
+        duration: 60,
+        ease    : 'Power1'
+    });
+    this._actualizarEstado();
+}
     _guardar() {
         if (this.cache.audio.exists('snd_save'))
             this.sound.play('snd_save', { volume: 0.7 });
@@ -185,12 +197,9 @@ export default class SaveScene extends Phaser.Scene {
     }
 
     _cerrar() {
-        if (this.closing) return;
-        this.closing = true;
-        this.cameras.main.fadeOut(250, 0, 0, 0);
-        this.cameras.main.once('camerafadeoutcomplete', () => {
-            this.scene.stop('SaveScene');
-            this.scene.resume(this.callerScene);
-        });
-    }
+    if (this.closing) return;
+    this.closing = true;
+    this.scene.stop('SaveScene');
+    this.scene.resume(this.callerScene);
+}
 }

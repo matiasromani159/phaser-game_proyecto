@@ -1,6 +1,7 @@
 import Player from '../entities/player.js';
 import Monster from '../entities/monster.js';
 import MonsterFlower from '../entities/MonsterFlower.js';
+import DialogueSystem from '../scenes/DialogueSystem.js';
 
 export default class BaseGameScene extends Phaser.Scene {
 
@@ -40,8 +41,13 @@ export default class BaseGameScene extends Phaser.Scene {
 
         this.load.audio(cfg.music, `/src/assets/sounds/${cfg.music}`);
         this.load.audio('player_hit', '/src/assets/sounds/snd_hurt.wav');
-        this.load.audio('snd_sword', '/src/assets/sounds/snd_sword.wav');
-        this.load.image('healthbar', '/src/assets/sprites/spr_hp_bar.png');
+        this.load.audio('snd_sword',  '/src/assets/sounds/snd_sword.wav');
+        this.load.image('healthbar',  '/src/assets/sprites/spr_hp_bar.png');
+
+        // Sonidos del sistema de diálogo
+        this.load.audio('snd_board_text_main',     '/src/assets/sounds/snd_board_text_main.wav');
+        this.load.audio('snd_board_text_main_end', '/src/assets/sounds/snd_board_text_main_end.wav');
+        this.load.audio('snd_board_lift',          '/src/assets/sounds/snd_board_lift.wav');
 
         // Sprites de Kris
         const dirs = ['down', 'up', 'left', 'right'];
@@ -70,7 +76,7 @@ export default class BaseGameScene extends Phaser.Scene {
         for (let i = 0; i < 6; i++)
             this.load.image(`savepoint_${i}`, `/src/assets/sprites/spr_savepoint/spr_savepoint_${i}.png`);
 
-        // Corazon y sonido de guardado (pre-cargados para evitar parpadeo)
+        // Corazón y sonido de guardado
         this.load.image('spr_heart', '/src/assets/sprites/spr_heart.png');
         this.load.audio('snd_save',  '/src/assets/sounds/snd_save.wav');
     }
@@ -93,9 +99,12 @@ export default class BaseGameScene extends Phaser.Scene {
         this.keyG    = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.G);
         this.cursors = this.input.keyboard.createCursorKeys();
 
+        // Texto del timer
         this.textoTiempo = this.add.text(16, 16, 'Tiempo: ' + this.segundos, {
-            fontSize: '18px', fill: '#ffffff'
-        }).setScrollFactor(0).setDepth(10);
+            fontFamily: 'UndertaleFont',
+            fontSize  : '18px',
+            fill      : '#ffffff'
+        }).setScrollFactor(0).setDepth(10).setResolution(10);
 
         this.timerEvent = this.time.addEvent({
             delay: 1000, loop: true,
@@ -105,7 +114,7 @@ export default class BaseGameScene extends Phaser.Scene {
             }
         });
 
-        // Musica
+        // Música
         const currentMusic    = this.registry.get('currentMusic');
         const currentMusicKey = this.registry.get('currentMusicKey');
 
@@ -158,6 +167,9 @@ export default class BaseGameScene extends Phaser.Scene {
             this.cameras.main.fadeIn(500, 0, 0, 0);
         }
 
+        // Sistema de diálogo
+        this.dialogue = new DialogueSystem(this);
+
         // Listener para cuando SaveScene cierre y esta escena se reanude
         this.events.on('resume', this._alReanudar, this);
     }
@@ -167,6 +179,9 @@ export default class BaseGameScene extends Phaser.Scene {
     // ─────────────────────────────────────────────
     update(time, delta) {
         if (this.gameIsOver || this.cambiandoRoom || this.enSaveMenu) return;
+
+        // Si hay diálogo activo, consume la entrada y bloquea el resto
+        if (this.dialogue.update()) return;
 
         // Tiles animados
         this.animatedTiles.forEach(anim => {
@@ -193,18 +208,13 @@ export default class BaseGameScene extends Phaser.Scene {
 
         if (Phaser.Input.Keyboard.JustDown(this.keyG)) this.abrirSaveMenu();
 
-        // ── Leer Z una sola vez y decidir qué hace ──────────────
-        // JustDown solo es true UNA vez por pulsación, por eso hay
-        // que leerlo aquí y pasarlo a quien corresponda, no llamarlo
-        // dos veces en distintos lugares.
+        // Leer Z una sola vez y decidir qué hace
         const zPressed = Phaser.Input.Keyboard.JustDown(this.keyZ);
 
         if (zPressed) {
             if (this._estaCercaDeSavepoint()) {
-                // Cerca de un savepoint: Z abre el menú, NO ataca
                 this.abrirSaveMenu();
             } else {
-                // Lejos: Z ataca normal
                 this.player.attack();
             }
         }
@@ -215,35 +225,32 @@ export default class BaseGameScene extends Phaser.Scene {
     // ─────────────────────────────────────────────
     // SAVEPOINTS
     // ─────────────────────────────────────────────
- _crearSavepoints(cfg) {
-    this.savepointSprites = [];
+    _crearSavepoints(cfg) {
+        this.savepointSprites = [];
 
-    if (!cfg.savepoints || cfg.savepoints.length === 0) return;
+        if (!cfg.savepoints || cfg.savepoints.length === 0) return;
 
-    if (!this.anims.exists('savepoint-idle')) {
-        this.anims.create({
-            key: 'savepoint-idle',
-            frames: Array.from({ length: 6 }, (_, i) => ({ key: `savepoint_${i}` })),
-            frameRate: 8,
-            repeat: -1
+        if (!this.anims.exists('savepoint-idle')) {
+            this.anims.create({
+                key: 'savepoint-idle',
+                frames: Array.from({ length: 6 }, (_, i) => ({ key: `savepoint_${i}` })),
+                frameRate: 8,
+                repeat: -1
+            });
+        }
+
+        cfg.savepoints.forEach(sp => {
+            const sprite = this.physics.add.sprite(sp.x, sp.y, 'savepoint_0');
+            sprite.play('savepoint-idle');
+            sprite.setScale(1.5);
+            sprite.setImmovable(true);
+            sprite.body.allowGravity = false;
+            this.savepointSprites.push(sprite);
         });
+
+        this.physics.add.collider(this.player, this.savepointSprites);
     }
 
-    cfg.savepoints.forEach(sp => {
-        // Usar physics.add.sprite en lugar de add.sprite para tener colisión
-        const sprite = this.physics.add.sprite(sp.x, sp.y, 'savepoint_0');
-        sprite.play('savepoint-idle');
-        sprite.setScale(1.5);             // ← tamaño, ajusta a tu gusto
-        sprite.setImmovable(true);      // ← no se mueve cuando el jugador choca
-        sprite.body.allowGravity = false;
-        this.savepointSprites.push(sprite);
-    });
-
-    // Colisión física con el jugador
-    this.physics.add.collider(this.player, this.savepointSprites);
-}
-
-    /** Devuelve true si el jugador está dentro del rango de algún savepoint */
     _estaCercaDeSavepoint() {
         if (!this.savepointSprites || this.savepointSprites.length === 0) return false;
         const RANGO = 40;
