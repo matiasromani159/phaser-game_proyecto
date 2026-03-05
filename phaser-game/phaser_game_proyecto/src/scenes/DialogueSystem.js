@@ -3,6 +3,7 @@
  *
  * La caja aparece arriba o abajo según la posición del jugador.
  * Z solo avanza cuando el texto ha terminado de escribirse.
+ * Wrap automático de texto según el ancho de la caja.
  *
  * USO:
  *   this.dialogue.show([
@@ -39,28 +40,26 @@ export default class DialogueSystem {
         this.liftSound  = opts.liftSound  ?? 'snd_board_lift';
         this.rate       = opts.rate       ?? 2;
         this.fontFamily = opts.fontFamily ?? 'UndertaleFont';
-        this.fontSize   = opts.fontSize   ?? 16;
+        this.fontSize   = opts.fontSize   ?? 24;
         this.boxColor   = opts.boxColor   ?? 0x000000;
         this.textColor  = opts.textColor  ?? '#ffffff';
 
         this._active    = false;
+        this._closing   = false; // true durante el tween de cierre
         this._messages  = [];
         this._msgIndex  = 0;
         this._container = null;
         this._writer    = null;
         this._onDone    = null;
 
-        // Dimensiones fieles al original
-        this.BOX_W = 383;
-        this.BOX_H = 85;
-
-        // Writer empieza en x+18, y+14
+        // Dimensiones — caja se adapta al fontSize
+        const camW           = scene.cameras.main.width;
+        this.BOX_W           = camW - 16;
+        this.BOX_H           = Math.max(85, this.fontSize * 4);
         this.WRITER_OFFSET_X = 18;
-        this.WRITER_OFFSET_Y = 14;
-
-        // Triángulo en x+362, y+74 relativo al container
-        this.TRIANGLE_X = 362;
-        this.TRIANGLE_Y = 74;
+        this.WRITER_OFFSET_Y = Math.round(this.BOX_H * 0.15);
+        this.TRIANGLE_X      = this.BOX_W - 20;
+        this.TRIANGLE_Y      = this.BOX_H - 12;
 
         this._keyZ = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
     }
@@ -75,21 +74,27 @@ export default class DialogueSystem {
         this._msgIndex = 0;
         this._onDone   = callback;
         this._active   = true;
+        this._closing  = false;
         this._build();
     }
 
     get isActive() { return this._active; }
 
     update() {
-        if (!this._active || !this._writer) return false;
+        // Bloquear input si está cerrando (tween de salida)
+        if (!this._active) return false;
+        if (this._closing) return true; // sigue bloqueando el juego pero sin procesar input
 
-        // Z solo avanza cuando el texto ha terminado completamente
+        if (!this._writer) return false;
+
         const zDown = Phaser.Input.Keyboard.JustDown(this._keyZ);
         if (zDown && !this._writer.typing && this._writer.reachedEnd && this._writer.halted) {
             this._nextMessage();
+            // _nextMessage puede haber arrancado el cierre — salir sin hacer tick
+            return true;
         }
 
-        this._writer.tick();
+        if (this._writer) this._writer.tick();
         return true;
     }
 
@@ -103,12 +108,8 @@ export default class DialogueSystem {
         const W     = cam.width;
         const H     = cam.height;
 
-        // Side según posición del jugador
-        // side 0 = caja arriba, side 1 = caja abajo
         let side = 0;
-        if (scene.player && scene.player.y < H / 2) {
-            side = 1;
-        }
+        if (scene.player && scene.player.y < H / 2) side = 1;
         this._side = side;
 
         const boxX = (W - this.BOX_W) / 2;
@@ -126,7 +127,6 @@ export default class DialogueSystem {
             .setScrollFactor(0)
             .setDepth(200);
 
-        // Fondo sin borde, solo fill
         this._bg = scene.add.rectangle(
             this.BOX_W / 2, this.BOX_H / 2,
             this.BOX_W, this.BOX_H,
@@ -134,11 +134,9 @@ export default class DialogueSystem {
         );
         this._container.add(this._bg);
 
-        // Sonido de apertura con pitch +1.2
         if (scene.cache.audio.exists(this.liftSound))
             scene.sound.play(this.liftSound, { volume: 0.5, detune: 200 });
 
-        // Entrada a velocidad constante (movespeed=16 a 60fps)
         const duration = Math.round((Math.abs(endY - startY) / 16) * (1000 / 60));
         scene.tweens.add({
             targets  : this._container,
@@ -158,10 +156,12 @@ export default class DialogueSystem {
         const msg = this._messages[this._msgIndex];
         if (!msg) { this._close(); return; }
 
+        const maxWidth = this.BOX_W - this.WRITER_OFFSET_X - 18;
+
         this._writer = new BoardWriter(this.scene, this._container, msg, {
             x         : this.WRITER_OFFSET_X,
             y         : this.WRITER_OFFSET_Y,
-            maxWidth  : this.BOX_W - this.WRITER_OFFSET_X - 8,
+            maxWidth  : maxWidth,
             fontFamily: this.fontFamily,
             fontSize  : this.fontSize,
             textColor : this.textColor,
@@ -185,6 +185,14 @@ export default class DialogueSystem {
     }
 
     _close() {
+        // Destruir el writer inmediatamente para evitar ticks huérfanos
+        if (this._writer) {
+            this._writer.destroy();
+            this._writer = null;
+        }
+
+        this._closing = true;
+
         const scene = this.scene;
         const H     = scene.cameras.main.height;
 
@@ -200,7 +208,7 @@ export default class DialogueSystem {
             onComplete: () => {
                 this._container.destroy();
                 this._container = null;
-                this._writer    = null;
+                this._closing   = false;
                 this._active    = false;
                 if (this._onDone) this._onDone();
             }
@@ -209,7 +217,7 @@ export default class DialogueSystem {
 }
 
 // ═══════════════════════════════════════════════════════
-// BoardWriter — tipeo letra a letra con tags
+// BoardWriter — tipeo letra a letra con tags y word wrap
 // ═══════════════════════════════════════════════════════
 
 const COLOR_MAP = {
@@ -219,7 +227,7 @@ const COLOR_MAP = {
     G: '#40ff40',
     W: '#ffffff',
     P: '#cc44ff',
-    '0': null   // null = usar textColor por defecto
+    '0': null
 };
 
 class BoardWriter {
@@ -235,11 +243,13 @@ class BoardWriter {
         this._triangle   = null;
         this._sinerTimer = 0;
 
-        this._tokens  = this._parse(rawText);
+        this._charWidth = opts.fontSize * 0.42;
+
+        this._tokens  = this._parseWithWrap(rawText);
         this._pos     = 0;
         this._delay   = 0;
 
-        this._lineH     = opts.fontSize + 4;
+        this._lineH     = opts.fontSize + 6;
         this._lineTexts = [{ x: opts.x, y: opts.y, segments: [] }];
         this._lineObjs  = [[]];
 
@@ -251,10 +261,8 @@ class BoardWriter {
         });
     }
 
-    // ── Tick desde update() ───────────────────────────────
     tick() {
         if (!this._triangle) return;
-        // siner 0-29, visible solo si < 20
         this._sinerTimer = (this._sinerTimer + 1) % 30;
         this._triangle.setVisible(this._sinerTimer < 20);
     }
@@ -266,7 +274,6 @@ class BoardWriter {
         if (this._triangle) { this._triangle.destroy(); this._triangle = null; }
     }
 
-    // ── Un paso del tipeo ─────────────────────────────────
     _step() {
         if (this._delay > 0) { this._delay--; return; }
         if (this._pos >= this._tokens.length) { this._finish(); return; }
@@ -307,7 +314,6 @@ class BoardWriter {
         this._showTriangle();
     }
 
-    // ── Render ────────────────────────────────────────────
     _renderChar(char, color) {
         const lastLine = this._lineTexts[this._lineTexts.length - 1];
         const lastSeg  = lastLine.segments[lastLine.segments.length - 1];
@@ -381,37 +387,94 @@ class BoardWriter {
 
     _frameToMs(frames) { return Math.max(1, frames) * (1000 / 60); }
 
-    // ── Parser ────────────────────────────────────────────
-    _parse(raw) {
-        const tokens = [];
-        let i        = 0;
-        let color    = null;
+    _parseWithWrap(raw) {
+        const words   = this._splitWords(raw);
+        const tokens  = [];
+        const maxW    = this.opts.maxWidth;
+        const cw      = this._charWidth;
+
+        let lineWidth = 0;
+
+        words.forEach(word => {
+            if (word.type === 'control') {
+                tokens.push(word.token);
+                if (word.token.type === 'newline' || word.token.type === 'halt') {
+                    lineWidth = 0;
+                }
+                return;
+            }
+
+            const wordWidth = word.chars.reduce((acc, c) => acc + (c.char === ' ' ? cw * 0.5 : cw), 0);
+
+            if (lineWidth > 0 && lineWidth + wordWidth > maxW) {
+                tokens.push({ type: 'newline' });
+                lineWidth = 0;
+            }
+
+            word.chars.forEach(c => {
+                tokens.push(c);
+                lineWidth += c.char === ' ' ? cw * 0.5 : cw;
+            });
+        });
+
+        const last = tokens[tokens.length - 1];
+        if (!last || (last.type !== 'halt' && last.type !== 'end')) {
+            tokens.push({ type: 'halt' });
+        }
+
+        return tokens;
+    }
+
+    _splitWords(raw) {
+        const result   = [];
+        let i          = 0;
+        let color      = null;
+        let currentWord = null;
+
+        const flushWord = () => {
+            if (currentWord && currentWord.chars.length > 0) {
+                result.push(currentWord);
+                currentWord = null;
+            }
+        };
+
+        const addChar = (char, col, silent = false) => {
+            if (!currentWord) currentWord = { type: 'text', chars: [] };
+            currentWord.chars.push({ type: 'char', char, color: col, silent });
+            if (char === ' ') flushWord();
+        };
 
         while (i < raw.length) {
             const ch = raw[i];
 
             if (ch === '`') {
                 i++;
-                tokens.push({ type: 'char', char: raw[i] ?? '', color });
+                addChar(raw[i] ?? '', color);
                 i++;
                 continue;
             }
 
             if (ch === '&' || ch === '\n') {
-                tokens.push({ type: 'newline' });
+                flushWord();
+                result.push({ type: 'control', token: { type: 'newline' } });
                 i++;
                 continue;
             }
 
             if (ch === '/') {
-                tokens.push({ type: 'halt' });
+                flushWord();
+                result.push({ type: 'control', token: { type: 'halt' } });
                 i++;
-                if (raw[i] === '%') { tokens.push({ type: 'end' }); i++; }
+                if (raw[i] === '%') {
+                    result.push({ type: 'control', token: { type: 'end' } });
+                    i++;
+                }
                 continue;
             }
 
             if (ch === '%' && raw[i + 1] === '%') {
-                tokens.push({ type: 'end' });
+                flushWord();
+                result.push({ type: 'control', token: { type: 'end' } });
                 i += 2;
                 continue;
             }
@@ -420,14 +483,15 @@ class BoardWriter {
                 const num = parseInt(raw[i + 1], 10);
                 if (!isNaN(num)) {
                     const delayMap = { 1: 5, 2: 10, 3: 15, 4: 20, 5: 30, 6: 40, 7: 60, 8: 90, 9: 150 };
-                    tokens.push({ type: 'delay', amount: delayMap[num] ?? 5 });
+                    flushWord();
+                    result.push({ type: 'control', token: { type: 'delay', amount: delayMap[num] ?? 5 } });
                     i += 2;
                     continue;
                 }
             }
 
             if (ch === ' ') {
-                tokens.push({ type: 'char', char: ' ', color, silent: true });
+                addChar(' ', color, true);
                 i++;
                 continue;
             }
@@ -444,15 +508,11 @@ class BoardWriter {
                 continue;
             }
 
-            tokens.push({ type: 'char', char: ch, color });
+            addChar(ch, color);
             i++;
         }
 
-        const last = tokens[tokens.length - 1];
-        if (!last || (last.type !== 'halt' && last.type !== 'end')) {
-            tokens.push({ type: 'halt' });
-        }
-
-        return tokens;
+        flushWord();
+        return result;
     }
 }

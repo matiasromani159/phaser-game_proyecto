@@ -17,8 +17,13 @@ export default class Room1 extends BaseGameScene {
                 { x: 150, y: 150 }
             ],
             monsters: [
-                { x: 100, y: 100 },
-                { type: 'flower', x: 300, y: 200 },
+                { type: 'monster', x: 100, y: 100 },
+                //{ type: 'flower',  x: 300, y: 200 },
+                //{ type: 'spear',   x: 300, y: 100 },
+
+             //    { type: 'lizard', x: 200, y: 200 },                // type 0 — camina + dispara pellets
+    { type: 'lizard', x: 300, y: 200, lizardType: 1 }, // type 1 — salta + rayos en 8 dirs
+   // { type: 'lizard', x: 400, y: 200, lizardType: 2 }, // type 2 — salta cerca del jugador
             ],
             doors: {
                 arriba:    null,
@@ -30,13 +35,25 @@ export default class Room1 extends BaseGameScene {
     }
 
     create(data) {
-        super.create(data); // ← importante, inicializa todo lo del padre
+        super.create(data);
 
-        // Diálogo de prueba al entrar a la room
-        this.dialogue.show([
-            "Bienvenido a la Room 1./",
-            "Este es un \cRmensaje de prueba\c0./",
-            "Texto lento...^3 y ya está."
-        ]);
+        // Diálogo al entrar por primera vez
+        if (!this.registry.get('room1_intro')) {
+            this.registry.set('room1_intro', true);
+            this.dialogue.show(["Bienvenido a la Room 1./"]);
+        }
+    }
+
+    abrirSaveMenu() {
+        if (!this.registry.get('savepoint_room1_seen')) {
+            this.registry.set('savepoint_room1_seen', true);
+            this.dialogue.show([
+                "Una luz cálida te rodea./",
+                "Sientes que podrías \cYdescansar\c0 aquí.^2 O no quien sabe, continua.  O no quien sabe, continua./"
+            ], () => super.abrirSaveMenu());
+            return;
+        }
+
+        super.abrirSaveMenu();
     }
 }

@@ -6,7 +6,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         scene.add.existing(this);
         scene.physics.add.existing(this);
 
-        this.vida = 10;
+        this.vida = 100;
         this.vidaMax = 100;
 
         // Barra de vida

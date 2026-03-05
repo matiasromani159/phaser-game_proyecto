@@ -1,6 +1,8 @@
 import Player from '../entities/player.js';
 import Monster from '../entities/monster.js';
 import MonsterFlower from '../entities/MonsterFlower.js';
+import MonsterSpear from '../entities/MonsterSpear.js';
+import MonsterLizard from '../entities/MonsterLizard.js';
 import DialogueSystem from '../scenes/DialogueSystem.js';
 
 export default class BaseGameScene extends Phaser.Scene {
@@ -72,6 +74,39 @@ export default class BaseGameScene extends Phaser.Scene {
         this.load.image('spr_smallbullet',         '/src/assets/sprites/spr_smallbullet.png');
         this.load.image('spr_smallbullet_outline', '/src/assets/sprites/spr_smallbullet_outline.png');
 
+        // MonsterSpear
+        this.load.image('monster_angry_0', '/src/assets/sprites/spr_monster_angery/spr_board_monster_angery_0.png');
+        this.load.image('monster_angry_1', '/src/assets/sprites/spr_monster_angery/spr_board_monster_angery_1.png');
+        this.load.image('spr_spear',       '/src/assets/sprites/spr_spear.png');
+
+        // MonsterLizard — todos los tipos y variantes
+        const lizardVariants = ['', '_alt', '_jumpy'];
+        const lizardDirs     = ['l', 'r'];
+        lizardVariants.forEach(v => {
+            lizardDirs.forEach(d => {
+                for (let i = 0; i < 2; i++)
+                    this.load.image(
+                        `lizard_${d}${v}_${i}`,
+                        `/src/assets/sprites/spr_lizard/spr_board_lizard_${d}${v}/spr_board_lizard_${d}${v}_${i}.png`
+                    );
+            });
+        });
+        // Hurt sprites
+        lizardDirs.forEach(d => {
+            for (let i = 0; i < 2; i++)
+                this.load.image(
+                    `lizard_${d}_hurt_${i}`,
+                    `/src/assets/sprites/spr_lizard/spr_board_lizard_${d}_hurt/spr_board_lizard_${d}_hurt_${i}.png`
+                );
+        });
+        this.load.image('lizard_reticle', '/src/assets/sprites/spr_lizard/spr_board_throw_reticle.png');
+
+        // Rayos del lizard type 1
+        for (let i = 0; i < 4; i++) {
+            this.load.image(`lightning_straight_${i}`, `/src/assets/sprites/spr_lizard/spr_board_lightningbullet_straight/spr_board_lightningbullet_straight_${i}.png`);
+            this.load.image(`lightning_diag_${i}`,     `/src/assets/sprites/spr_lizard/spr_board_lightningbullet_diag/spr_board_lightningbullet_diag_${i}.png`);
+        }
+
         // Savepoint
         for (let i = 0; i < 6; i++)
             this.load.image(`savepoint_${i}`, `/src/assets/sprites/spr_savepoint/spr_savepoint_${i}.png`);
@@ -142,11 +177,21 @@ export default class BaseGameScene extends Phaser.Scene {
         // Grupos
         this.monsters = this.physics.add.group();
         this.flowers  = [];
+        this.spears   = [];
+        this.lizards  = [];
         this.pellets  = this.physics.add.group();
 
         cfg.monsters.forEach(m => {
             if (m.type === 'flower') {
                 this.flowers.push(new MonsterFlower(this, m.x, m.y));
+            } else if (m.type === 'spear') {
+                const spear = new MonsterSpear(this, m.x, m.y);
+                this.spears.push(spear);
+                this.monsters.add(spear);
+            } else if (m.type === 'lizard') {
+                const lizard = new MonsterLizard(this, m.x, m.y, m.lizardType ?? 0);
+                this.lizards.push(lizard);
+                this.monsters.add(lizard);
             } else {
                 const monster = new Monster(this, m.x, m.y, 'monster_right_0');
                 monster.play('monster-walk');
@@ -349,10 +394,11 @@ export default class BaseGameScene extends Phaser.Scene {
     }
 
     _crearColisiones() {
+        this.physics.add.collider(this.monsters, this.monsters);
         this.physics.add.collider(this.player,   this.wallsLayer);
         this.physics.add.collider(this.monsters, this.wallsLayer);
 
-        this.physics.add.collider(this.player, this.monsters, (player, monster) => {
+        this.physics.add.overlap(this.player, this.monsters, (player, monster) => {
             const ahora = this.time.now;
             if (ahora - player.lastDamageTime > 1000) {
                 player.takeDamage(10);
