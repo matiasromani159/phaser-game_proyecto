@@ -1,5 +1,7 @@
+import MonsterBase from './MonsterBase.js';
+
 /**
- * MonsterSpear — Enemigo que patrulla celda a celda (igual que Monster),
+ * MonsterSpear — Enemigo que patrulla celda a celda,
  * se vuelve agresivo al detectar al jugador y dispara lanzas en dirección cardinal.
  *
  * Estados:
@@ -7,29 +9,21 @@
  *   shooting → se detiene, parpadea sprite angry, dispara lanza cardinal
  *   cooldown → pausa breve tras disparar antes de volver a patrol
  */
-export default class MonsterSpear extends Phaser.Physics.Arcade.Sprite {
+export default class MonsterSpear extends MonsterBase {
 
     constructor(scene, x, y) {
         super(scene, x, y, 'monster_right_0');
 
-        this.setScale(2);
-        scene.add.existing(this);
-        scene.physics.add.existing(this);
-
-        this.body.allowGravity = false;
-        this.isDead = false;
-        this.hp     = 30;
+        this.hp = 30;
 
         // ── Ajusta estos valores ──────────────────────────────
         this.CELL_SIZE       = 64;
-        this.spd             = 1;   // px por frame activo
-        this.UPDATE_INTERVAL = 2;   // frames entre cada movimiento
-        this.WAIT_BETWEEN    = 0;   // frames de pausa entre celdas
-
-        this.AGGRO_RANGE     = 160; // distancia para disparar
+        this.spd             = 1;
+        this.UPDATE_INTERVAL = 2;
+        this.WAIT_BETWEEN    = 0;
+        this.AGGRO_RANGE     = 160;
         // ─────────────────────────────────────────────────────
 
-        // ── Movimiento celda a celda (igual que Monster) ──────
         this.movedir     = Phaser.Math.Between(0, 3);
         this.movecon     = 0;
         this.movetimer   = 0;
@@ -37,28 +31,23 @@ export default class MonsterSpear extends Phaser.Physics.Arcade.Sprite {
         this.waittimer   = 0;
 
         this.DIRS = [
-            {  x:  1, y:  0 }, // 0 derecha
-            {  x:  0, y: -1 }, // 1 arriba
-            {  x: -1, y:  0 }, // 2 izquierda
-            {  x:  0, y:  1 }, // 3 abajo
+            {  x:  1, y:  0 },
+            {  x:  0, y: -1 },
+            {  x: -1, y:  0 },
+            {  x:  0, y:  1 },
         ];
 
-        // ── Disparo ───────────────────────────────────────────
-        this.SHOOT_COOLDOWN  = 1800; // ms entre disparos
-        this.SHOOT_WARN_TIME = 400;  // ms de aviso antes de lanzar
+        this.SHOOT_COOLDOWN  = 1800;
+        this.SHOOT_WARN_TIME = 400;
         this.shootTimer      = 0;
         this.warnTimer       = 0;
         this._cooldownLeft   = 0;
 
-        // ── Estado ────────────────────────────────────────────
         this.state = 'patrol';
 
         this.play('monster-walk');
     }
 
-    // ─────────────────────────────────────────────────────────
-    // UPDATE — llamar desde BaseGameScene cada frame
-    // ─────────────────────────────────────────────────────────
     actualizar() {
         if (this.isDead) return;
 
@@ -68,7 +57,6 @@ export default class MonsterSpear extends Phaser.Physics.Arcade.Sprite {
 
         const dist = Phaser.Math.Distance.Between(this.x, this.y, player.x, player.y);
 
-        // ── Disparo tiene prioridad sobre el movimiento ───────
         if (this.state === 'shooting') {
             this._updateShooting(delta, player);
             return;
@@ -79,25 +67,21 @@ export default class MonsterSpear extends Phaser.Physics.Arcade.Sprite {
             return;
         }
 
-        // ── Acumular shoot timer siempre que patrulla ─────────
         this.shootTimer += delta;
         if (this.shootTimer >= this.SHOOT_COOLDOWN && dist < this.AGGRO_RANGE) {
             this._enterShooting(player);
             return;
         }
 
-        // ── Movimiento celda a celda (igual que Monster) ──────
         this.updatetimer++;
         if (this.updatetimer < this.UPDATE_INTERVAL) return;
         this.updatetimer = 0;
 
-        // Pausa entre celdas
         if (this.movecon === 0) {
             this.waittimer++;
             if (this.waittimer < this.WAIT_BETWEEN) return;
             this.waittimer = 0;
 
-            // Elegir dirección evitando paredes
             this.movedir = Phaser.Math.Between(0, 3);
             for (let i = 0; i < 4; i++) {
                 const off  = this.DIRS[this.movedir];
@@ -111,11 +95,9 @@ export default class MonsterSpear extends Phaser.Physics.Arcade.Sprite {
                     break;
                 }
             }
-
             this.movecon = 1;
         }
 
-        // Moverse spd píxeles
         if (this.movecon === 1) {
             this.movetimer++;
             const dir  = this.DIRS[this.movedir];
@@ -159,14 +141,9 @@ export default class MonsterSpear extends Phaser.Physics.Arcade.Sprite {
         }
     }
 
-    // ─────────────────────────────────────────────────────────
-    // ESTADOS DE DISPARO
-    // ─────────────────────────────────────────────────────────
-
     _updateShooting(delta, player) {
         this.warnTimer += delta;
 
-        // Parpadeo entre los dos frames angry
         if (Math.floor(this.warnTimer / 100) % 2 === 0) {
             this.setTexture('monster_angry_0');
         } else {
@@ -190,11 +167,6 @@ export default class MonsterSpear extends Phaser.Physics.Arcade.Sprite {
         }
     }
 
-    // ─────────────────────────────────────────────────────────
-    // HELPERS
-    // ─────────────────────────────────────────────────────────
-
-    /** Elige la dirección cardinal más cercana al jugador y entra en shooting */
     _enterShooting(player) {
         const dx = player.x - this.x;
         const dy = player.y - this.y;
@@ -209,23 +181,13 @@ export default class MonsterSpear extends Phaser.Physics.Arcade.Sprite {
         this.state     = 'shooting';
     }
 
-    /** Dispara una lanza en la dirección cardinal actual */
     _shoot(player) {
         const spear = new Spear(this.scene, this.x, this.y, this.movedir);
         this.scene.pellets.add(spear);
         spear.launch();
     }
 
-    die() {
-        if (this.isDead) return;
-        this.isDead = true;
-
-        this.setVelocity(0, 0);
-        this.body.enable = false;
-
-        this.play('monster-die');
-        this.once('animationcomplete', () => this.destroy());
-    }
+    // die() heredado de MonsterBase (animación 'monster-die' + drop)
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -242,10 +204,9 @@ class Spear extends Phaser.Physics.Arcade.Sprite {
         this.body.allowGravity = false;
         this.dir   = dir;
         this.speed = 220;
-        this.setScale(2); // cambia este número
+        this.setScale(2);
 
-        // Rotar el sprite según la dirección
-        const angles = [0, -90, 180, 90]; // derecha, arriba, izquierda, abajo
+        const angles = [0, -90, 180, 90];
         this.setAngle(angles[dir]);
     }
 
@@ -260,7 +221,6 @@ class Spear extends Phaser.Physics.Arcade.Sprite {
         this.setVelocity(vel.x, vel.y);
     }
 
-    // Llamado desde BaseGameScene cada frame — destruir si sale del mapa
     updateColor(delta) {
         const bounds = this.scene.physics.world.bounds;
         if (

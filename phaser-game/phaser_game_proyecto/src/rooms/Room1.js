@@ -38,10 +38,10 @@ export default class Room1 extends BaseGameScene {
         super.create(data);
 
         // Diálogo al entrar por primera vez
-        if (!this.registry.get('room1_intro')) {
+      /*  if (!this.registry.get('room1_intro')) {
             this.registry.set('room1_intro', true);
             this.dialogue.show(["Bienvenido a la Room 1./"]);
-        }
+        }*/
     }
 
     abrirSaveMenu() {

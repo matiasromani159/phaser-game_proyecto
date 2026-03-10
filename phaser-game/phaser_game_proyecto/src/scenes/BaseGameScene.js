@@ -46,6 +46,10 @@ export default class BaseGameScene extends Phaser.Scene {
         this.load.audio('snd_sword',  '/src/assets/sounds/snd_sword.wav');
         this.load.image('healthbar',  '/src/assets/sprites/spr_hp_bar.png');
 
+        // ── NUEVO: item curativo ──────────────────────────────
+        this.load.image('spr_board_candy', '/src/assets/sprites/spr_board_candy.png');
+        // ─────────────────────────────────────────────────────
+
         // Sonidos del sistema de diálogo
         this.load.audio('snd_board_text_main',     '/src/assets/sounds/snd_board_text_main.wav');
         this.load.audio('snd_board_text_main_end', '/src/assets/sounds/snd_board_text_main_end.wav');
@@ -91,7 +95,6 @@ export default class BaseGameScene extends Phaser.Scene {
                     );
             });
         });
-        // Hurt sprites
         lizardDirs.forEach(d => {
             for (let i = 0; i < 2; i++)
                 this.load.image(
@@ -101,7 +104,6 @@ export default class BaseGameScene extends Phaser.Scene {
         });
         this.load.image('lizard_reticle', '/src/assets/sprites/spr_lizard/spr_board_throw_reticle.png');
 
-        // Rayos del lizard type 1
         for (let i = 0; i < 4; i++) {
             this.load.image(`lightning_straight_${i}`, `/src/assets/sprites/spr_lizard/spr_board_lightningbullet_straight/spr_board_lightningbullet_straight_${i}.png`);
             this.load.image(`lightning_diag_${i}`,     `/src/assets/sprites/spr_lizard/spr_board_lightningbullet_diag/spr_board_lightningbullet_diag_${i}.png`);
@@ -111,7 +113,6 @@ export default class BaseGameScene extends Phaser.Scene {
         for (let i = 0; i < 6; i++)
             this.load.image(`savepoint_${i}`, `/src/assets/sprites/spr_savepoint/spr_savepoint_${i}.png`);
 
-        // Corazón y sonido de guardado
         this.load.image('spr_heart', '/src/assets/sprites/spr_heart.png');
         this.load.audio('snd_save',  '/src/assets/sounds/snd_save.wav');
     }
@@ -134,7 +135,6 @@ export default class BaseGameScene extends Phaser.Scene {
         this.keyG    = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.G);
         this.cursors = this.input.keyboard.createCursorKeys();
 
-        // Texto del timer
         this.textoTiempo = this.add.text(16, 16, 'Tiempo: ' + this.segundos, {
             fontFamily: 'UndertaleFont',
             fontSize  : '18px',
@@ -175,11 +175,14 @@ export default class BaseGameScene extends Phaser.Scene {
         if (savedHP !== undefined) this.player.vida = savedHP;
 
         // Grupos
-        this.monsters = this.physics.add.group();
-        this.flowers  = [];
-        this.spears   = [];
-        this.lizards  = [];
-        this.pellets  = this.physics.add.group();
+        this.monsters     = this.physics.add.group();
+        this.flowers      = [];
+        this.spears       = [];
+        this.lizards      = [];
+        this.pellets      = this.physics.add.group();
+        // ── NUEVO: grupo de drops curativos ──────────────────
+        this.healthDrops  = this.physics.add.group();
+        // ─────────────────────────────────────────────────────
 
         cfg.monsters.forEach(m => {
             if (m.type === 'flower') {
@@ -212,10 +215,7 @@ export default class BaseGameScene extends Phaser.Scene {
             this.cameras.main.fadeIn(500, 0, 0, 0);
         }
 
-        // Sistema de diálogo
         this.dialogue = new DialogueSystem(this);
-
-        // Listener para cuando SaveScene cierre y esta escena se reanude
         this.events.on('resume', this._alReanudar, this);
     }
 
@@ -225,7 +225,6 @@ export default class BaseGameScene extends Phaser.Scene {
     update(time, delta) {
         if (this.gameIsOver || this.cambiandoRoom || this.enSaveMenu) return;
 
-        // Si hay diálogo activo, consume la entrada y bloquea el resto
         if (this.dialogue.update()) return;
 
         // Tiles animados
@@ -253,9 +252,7 @@ export default class BaseGameScene extends Phaser.Scene {
 
         if (Phaser.Input.Keyboard.JustDown(this.keyG)) this.abrirSaveMenu();
 
-        // Leer Z una sola vez y decidir qué hace
         const zPressed = Phaser.Input.Keyboard.JustDown(this.keyZ);
-
         if (zPressed) {
             if (this._estaCercaDeSavepoint()) {
                 this.abrirSaveMenu();
@@ -438,6 +435,16 @@ export default class BaseGameScene extends Phaser.Scene {
         this.physics.add.overlap(this.player.attackHitbox, this.pellets, (hitbox, pellet) => {
             pellet.destroy();
         });
+
+        // ── NUEVO: jugador recoge HealthDrop al tocarlo ───────
+        this.physics.add.overlap(
+            this.player,
+            this.healthDrops,
+            (player, drop) => drop.collect(player),
+            null,
+            this
+        );
+        // ─────────────────────────────────────────────────────
     }
 
     _checkSwordVsFlowers() {
