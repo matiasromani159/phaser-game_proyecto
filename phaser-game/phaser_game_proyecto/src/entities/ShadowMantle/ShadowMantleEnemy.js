@@ -49,6 +49,11 @@ export class ShadowMantleEnemy extends Phaser.Physics.Arcade.Sprite {
     actualizar(delta) {
         if (this.isDead) return;
 
+        // Throttle a 30fps igual que el boss
+        this._deltaAccum = (this._deltaAccum ?? 0) + delta;
+        if (this._deltaAccum < 33.333) return;
+        this._deltaAccum -= 33.333;
+
         this._spdtimer++;
         if (this._spdtimer > 60 && this._spdtimer < 180)
             this._spd = Math.round(Phaser.Math.Linear(5, 2, (this._spdtimer - 60) / 120));

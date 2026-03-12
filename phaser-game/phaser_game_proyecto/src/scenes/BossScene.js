@@ -82,6 +82,10 @@ export default class BossScene extends Phaser.Scene {
         this.load.image('mantle_cloud_2',          '/src/assets/sprites/spr_smallbullet.png');
         this.load.image('mantle_cloud_3',          '/src/assets/sprites/spr_smallbullet.png');
         this.load.image('mantle_cloud_bullet_0',   '/src/assets/sprites/spr_smallbullet.png');
+        // Sprite real del proyectil cardinal
+        for (let i = 0; i < 2; i++)
+            this.load.image(`mantle_cloud_projectile_${i}`,
+                `/src/assets/sprites/spr_boss/spr_shadow_mantle_cloud_projectile/spr_shadow_mantle_cloud_projectile_${i}.png`);
 
         // ── Enemy sprites (obj___) ────────────────────────────
         for (let i = 0; i < 6; i++)
@@ -138,6 +142,13 @@ export default class BossScene extends Phaser.Scene {
         // ── Controles ─────────────────────────────────────────
         this.cursors = this.input.keyboard.createCursorKeys();
         this.keyZ    = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
+
+        // ── Teclas de debug (quitar antes de producción) ──────
+        this.keyF1 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F1);
+        this.keyF2 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F2);
+        this.keyF3 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F3);
+        this.keyF4 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F4);
+        this.keyF5 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F5);
 
         // ── Jugador ───────────────────────────────────────────
         const spawn   = data?.playerSpawn ?? { x: 216, y: 270 };
@@ -203,6 +214,16 @@ export default class BossScene extends Phaser.Scene {
         if (this.gameIsOver) return;
 
         this.player.update(this.cursors);
+
+        // ── Debug keys ────────────────────────────────────────
+        const b = this.boss;
+        if (Phaser.Input.Keyboard.JustDown(this.keyF1)) this._debugForcePhase(1);
+        if (Phaser.Input.Keyboard.JustDown(this.keyF2)) this._debugForcePhase(2);
+        if (Phaser.Input.Keyboard.JustDown(this.keyF3)) this._debugForcePhase(3);
+        if (Phaser.Input.Keyboard.JustDown(this.keyF4)) this._debugForcePhase(4);
+        if (Phaser.Input.Keyboard.JustDown(this.keyF5)) {
+            console.log(`[DEBUG] hp:${b.hp.toFixed(1)} phase:${b.phase} dashcon:${b.dashcon} burstwavecon:${b.burstwavecon} flamewavecon:${b.flamewavecon} spawnenemies:${b.spawnenemies} phasetransitioncon:${b.phasetransitioncon} attacktimer:${b.attacktimer} movestyle:${b.movestyle}`);
+        }
 
         // Ataque del jugador
         if (Phaser.Input.Keyboard.JustDown(this.keyZ)) {
@@ -369,9 +390,9 @@ export default class BossScene extends Phaser.Scene {
         makeAnim('mantle-onfire',
             ['mantle_onfire_0', 'mantle_onfire_1'], 30);
         makeAnim('mantle-release',
-            Array.from({length:10}, (_,i) => `mantle_release_${i}`), 30);
+            Array.from({length:10}, (_,i) => `mantle_release_${i}`), 30, 0);
         makeAnim('mantle-release-abbreviated',
-            Array.from({length:5},  (_,i) => `mantle_release_abbreviated_${i}`), 30);
+            Array.from({length:5},  (_,i) => `mantle_release_abbreviated_${i}`), 30, 0);
         makeAnim('mantle-laugh',
             ['mantle_laugh_0', 'mantle_laugh_1'], 6);                     // image_speed oscila
         makeAnim('mantle-side-r',
@@ -421,5 +442,41 @@ export default class BossScene extends Phaser.Scene {
         this.music.stop();
         this.registry.set('lastRoom', 'BossScene');
         this.scene.start('GameOverScene', { x: this.player.x, y: this.player.y });
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // DEBUG — forzar fase (F1-F4) / imprimir estado (F5)
+    // ─────────────────────────────────────────────────────────
+    _debugForcePhase(phase) {
+        const b = this.boss;
+
+        // Limpiar todo el estado activo
+        b.burstwavecon = 0; b.burstwavetimer = 0;
+        b.spawnenemies = 0; b.spawnenemiestimer = 0;
+        b.dashcon      = 0; b.dashtimer = 0;
+        b.flamewavecon = 0; b.flamewavetimer = 0;
+        b.phasetransitioncon = 0; b.phasetransitiontimer = 0;
+        b.telegraphtimer = 0;
+        b._vx = 0; b._vy = 0;
+        b._dashSpeed = 0; b._dashGravityAmt = 0; b._dashFriction = 0;
+        b._dashPrepared = false;
+        b.ohmygodimonfire = 0;
+        b.movestyle = 'none';
+        b.movecon = 0; b.movetimer = 0;
+        b.dashcount = 0; b.dashused = 0;
+        b.burstwaveused = 0; b.flamewaveused = 0;
+        b.enemywaveused = 0;
+        this.destroyFireControllers();
+        this.bossBullets.clear(true, true);
+        this.bossEnemies.clear(true, true);
+
+        // Setear hp y phase para la fase pedida
+        const hpMap = { 1: 28, 2: 18, 3: 9, 4: 3 };
+        b.hp    = hpMap[phase];
+        b.phase = phase - 1; // -1 para que _chooseAttack detecte el cambio de fase
+        b.attacktimer = 20;
+        b._playAnim('mantle-idle');
+
+        console.log(`[DEBUG] Forzando fase ${phase} — hp: ${b.hp}`);
     }
 }

@@ -104,6 +104,13 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
         this._pathTargetY = y;
 
         this.play('mantle-idle');
+
+        // Volver a idle automáticamente al terminar release/release-abbreviated
+        this.on('animationcomplete', (anim) => {
+            if (anim.key === 'mantle-release' || anim.key === 'mantle-release-abbreviated') {
+                this._playAnim('mantle-idle');
+            }
+        });
     }
 
     // ─────────────────────────────────────────────────────────
@@ -221,6 +228,14 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
         // ── Aplicar velocidad manual ──────────────────────────
         this.x += this._vx;
         this.y += this._vy;
+
+        // ── Velocidad de la risa: empieza rápido y frena (GML: lerp(0.6, 0.1, t/61)) ──
+        if (this._currentAnim === 'mantle-laugh' && this.telegraphtimer > 0) {
+            const t       = 1 - (this.telegraphtimer / 61); // 0→1 mientras cuenta
+            const speed   = Phaser.Math.Linear(0.6, 0.1, t); // 0.6 al inicio, 0.1 al final
+            const fps     = speed * 30; // convertir image_speed GML a frameRate Phaser
+            if (this.anims.currentAnim) this.anims.msPerFrame = 1000 / Math.max(fps, 1);
+        }
 
         // ── Efecto visual "on fire" ───────────────────────────
         this._updateOnFire();
@@ -405,9 +420,31 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
 
     _spawnBomb(rx, ry, txRange, tyRange) {
         const scene = this.scene;
-        const tx = txRange[0] + Phaser.Math.Between(0, txRange[1] - txRange[0] - 1);
-        const ty = tyRange[0] + Phaser.Math.Between(0, tyRange[1] - tyRange[0] - 1);
-        const bomb = new ShadowMantleBomb(scene, this.x + rx, this.y + ry, tx, ty);
+
+        // El GML usa un bomb_spawner que genera posiciones candidatas
+        // filtradas por y entre 128-192 (escala GML). Aquí generamos
+        // posiciones dentro del área jugable de 432x324.
+        const candidates = [];
+        for (let ix = 0; ix < 11; ix++) {
+            for (let iy = 0; iy < 7; iy++) {
+                const cx = 32  + ix * 32;
+                const cy = 80  + iy * 24;
+                // Filtrar franja vertical equivalente al GML (y 128-192 de 320px = 40%-60%)
+                if (cy < 97 || cy > 194) continue;
+                candidates.push({ x: cx, y: cy });
+            }
+        }
+
+        // Filtrar candidatos muy cerca del jugador
+        const player = scene.player;
+        const valid = candidates.filter(c =>
+            Phaser.Math.Distance.Between(c.x, c.y, player.x, player.y) >= 50
+        );
+
+        const pool = valid.length > 0 ? valid : candidates;
+        const pos  = pool[Phaser.Math.Between(0, pool.length - 1)];
+
+        const bomb = new ShadowMantleBomb(scene, this.x + rx, this.y + ry, pos.x, pos.y);
         scene.bossBullets.add(bomb);
     }
 
@@ -605,10 +642,9 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
     }
 
     // ─────────────────────────────────────────────────────────
-    // DASH — fase de "subir" (dashcon 1)
+    // DASH — fase de preparación (dashcon 1)
     // ─────────────────────────────────────────────────────────
     _updateDashPrepare() {
-        // Solo se ejecuta en el primer frame (dashtimer == 1 en GML)
         if (this._dashPrepared) return;
         this._dashPrepared = true;
 
@@ -617,13 +653,15 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
             (this.damagetakenduringattack > 2 && this.dashcount > 1)) &&
             this.hp > 4
         ) {
-            // Subir y reposicionar
-            this._vy = 16;
-            this.x   = 224 + Phaser.Math.Between(0, 5) * 32;
+            // GML: vspeed = 16, x reposicionado, dashcon = 1.5
+            // El boss cae hacia abajo; _updateDashFallback espera a que y > bounds.y + 152
+            this._vy   = 16;
+            this.x     = 224 + Phaser.Math.Between(0, 5) * 32;
             this.dashcon   = 1.5;
             this.dashtimer = 0;
+            this._dashPrepared = false; // resetear para que 1.5 pueda volver a 1 limpiamente
         } else {
-            const player = this.scene.player;
+            const player  = this.scene.player;
             const offsetX = Phaser.Math.Between(0,1) === 0 ? 0 : (Phaser.Math.Between(0,1) === 0 ? 66 : -66);
             this._dashDir = Phaser.Math.Angle.Between(
                 this.x + 16, this.y + 16,
@@ -639,13 +677,21 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
     }
 
     // ─────────────────────────────────────────────────────────
-    // DASH — fallback (dashcon 1.5) — boss cayó fuera del mapa
+    // DASH — fallback (dashcon 1.5) — boss cae fuera, ríe y reinicia
     // ─────────────────────────────────────────────────────────
     _updateDashFallback() {
         const bounds = this.scene.physics.world.bounds;
+
+        // El boss cae con _vy hasta salir de pantalla (GML: vspeed = 16)
+        if (this._vy !== 0) {
+            this.y += this._vy;
+        }
+
+        // Igual que GML: if (y > cameray() + 152 || telegraphtimer > 0)
         if (this.y > bounds.y + 152 || this.telegraphtimer > 0) {
-            this._dashGravity = 0;
-            this._dashSpeed   = 0;
+            this._vy             = 0;
+            this._dashSpeed      = 0;
+            this._dashGravityAmt = 0;
             this.ohmygodimonfire = 0;
 
             if (this.telegraphtimer === 0) {
@@ -658,6 +704,7 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
                 this.attacktimer    = 19;
                 this.dashcon        = 0;
                 this.telegraphtimer = 0;
+                this._dashPrepared  = false;
             }
         }
     }
@@ -741,7 +788,7 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
             this._dashHitboxActive = false;
         }
 
-        // Salir de límites → reiniciar dash
+        // Salir de límites → reposicionar arriba y volver a dashcon 1
         if (
             this.x < bounds.x + 32 || this.x > bounds.right ||
             this.y > bounds.bottom || this.y < bounds.y - 100
@@ -752,7 +799,9 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
             this._dashGravityAmt  = 0;
             this._dashFriction    = 0;
             this._dashPrepared    = false;
-            this.x = 32 + Phaser.Math.Between(0, 11) * 32;
+            this.ohmygodimonfire  = 0;
+            // Reposicionar arriba igual que el GML
+            this.x = 160 + Phaser.Math.Between(0, 9) * 32;
             this.y = bounds.y - 10;
         }
     }
@@ -773,7 +822,12 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
 
                 if (this.phasetransitioncon === 1) {
                     this.targetx = W / 2; this.targety = H / 2;
-                } else if (this.spawnenemies !== 1) {
+                } else if (this.spawnenemies === 1) {
+                    // targetx/targety los setea ShadowMantleEnemySpawn — solo activar movecon
+                    // si aún no tienen valor, quedarse en el sitio
+                    if (this.targetx === undefined) this.targetx = this.x;
+                    if (this.targety === undefined) this.targety = this.y;
+                } else {
                     this.targetx = 32  + Phaser.Math.Between(0, 9) * 32;
                     this.targety = 48  + Phaser.Math.Between(0, 4) * 32;
 
@@ -877,8 +931,12 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
 
     _playAnim(key) {
         this._currentAnim = key;
-        if (this.anims.exists ? this.anims.exists(key) : true)
-            this.play(key, true);
+        const exists = this.scene.anims.exists(key);
+        if (!exists) {
+            console.warn(`[ShadowMantle] Animación no encontrada: "${key}"`);
+            return;
+        }
+        this.play(key, true);
     }
 
     // ─────────────────────────────────────────────────────────

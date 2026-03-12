@@ -44,6 +44,11 @@ export class ShadowMantleFireController {
         if (this.isDead) return;
         if (!this._boss || this._boss.isDead) { this._destroy(); return; }
 
+        // Throttle a 30fps igual que el boss
+        this._deltaAccum = (this._deltaAccum ?? 0) + delta;
+        if (this._deltaAccum < 33.333) return;
+        this._deltaAccum -= 33.333;
+
         const t = this._type;
 
         if (t === 0 || t === 1) this._updateType01();
@@ -202,7 +207,7 @@ export class ShadowMantleFireController {
                     this._boss.y + 16,
                     { direction: dir, gravity: 0.2333, activetimer: 20 }
                 );
-                this.scene.bossBullets.add(fb);
+                this.scene.bossBullets.add(fb); fb.init();
             }
             this._fireballCount++;
             this._totalCount++;
@@ -224,7 +229,7 @@ export class ShadowMantleFireController {
                     this._boss.y + 16,
                     { direction: dir, gravity: 0.3667, activetimer: 18 }
                 );
-                this.scene.bossBullets.add(fb);
+                this.scene.bossBullets.add(fb); fb.init();
             }
             this._fireballCount++;
             this._totalCount++;
@@ -268,7 +273,7 @@ export class ShadowMantleFireController {
                     this._boss.y + 16 + Math.sin(Phaser.Math.DegToRad(dir)) * 24,
                     { direction: dir, gravity: 0.7, activetimer: 10, type: 1 }
                 );
-                this.scene.bossBullets.add(fb);
+                this.scene.bossBullets.add(fb); fb.init();
             }
             this._fireballCount++;
             this._fireballTimer -= 4;

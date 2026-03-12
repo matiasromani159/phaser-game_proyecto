@@ -41,6 +41,11 @@ export class ShadowMantleFire extends Phaser.Physics.Arcade.Sprite {
     actualizar(delta) {
         if (this.isDead) return;
 
+        // Throttle a 30fps igual que el boss
+        this._deltaAccum = (this._deltaAccum ?? 0) + delta;
+        if (this._deltaAccum < 33.333) return;
+        this._deltaAccum -= 33.333;
+
         // Seguir al target (boss)
         if (!this._rotatorTarget || this._rotatorTarget.isDead) {
             this._destroy(); return;

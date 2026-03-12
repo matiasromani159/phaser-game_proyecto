@@ -15,30 +15,47 @@ export class ShadowMantleFire3 extends Phaser.Physics.Arcade.Sprite {
         this.body.allowGravity = false;
         this.setScale(2);
 
-        const dir   = opts.direction ?? 0;
-        const spd   = opts.speed     ?? 2;
-        const grav  = opts.gravity   ?? 0.2333;
+        const dir  = opts.direction ?? 0;
+        const spd  = opts.speed     ?? 2;
+        const grav = opts.gravity   ?? 0.2333;
 
         this._dir         = dir;
         this._speed       = spd;
         this._gravity     = grav;
-        this._gravDir     = dir + 180; // gravedad opuesta = frena y cae de vuelta
-        this._timer       = 0;
         this._type        = opts.type ?? 0;
+        this._timer       = 0;
         this.activeHitbox = false;
         this._activetimer = opts.activetimer ?? 20;
         this.damage       = 1;
         this.isDead       = false;
 
-        // Velocidad inicial
-        this.setVelocity(
-            Math.cos(Phaser.Math.DegToRad(dir)) * spd * 60,
-            Math.sin(Phaser.Math.DegToRad(dir)) * spd * 60
-        );
+        this._dirRad  = Phaser.Math.DegToRad(dir);
+        // GML tipo 6/7: gravity_direction = direction + 180 (frena)
+        // GML tipo 8:   gravity_direction = direction       (acelera hacia afuera)
+        // En nuestro código _type=1 corresponde al tipo 8 del GML
+        this._gravRad = this._type === 1
+            ? Phaser.Math.DegToRad(dir)
+            : Phaser.Math.DegToRad(dir + 180);
+    }
+
+    init() {
+        // GML: speed en px/frame a 30fps → * 30 = px/s en Phaser
+        if (this._speed !== 0) {
+            this.body.setVelocity(
+                Math.cos(this._dirRad) * this._speed * 30,
+                Math.sin(this._dirRad) * this._speed * 30
+            );
+        }
+        // Si speed=0 (tipo 8), la gravedad lo acelera desde cero
     }
 
     actualizar(delta) {
         if (this.isDead) return;
+
+        // Throttle a 30fps
+        this._deltaAccum = (this._deltaAccum ?? 0) + delta;
+        if (this._deltaAccum < 33.333) return;
+        this._deltaAccum -= 33.333;
 
         this._timer++;
 
@@ -53,21 +70,14 @@ export class ShadowMantleFire3 extends Phaser.Physics.Arcade.Sprite {
             }
         }
 
-        // Tipo 1: gravedad manual aplicada cada frame
-        if (this._type === 1) {
-            const rad   = Phaser.Math.DegToRad(this._dir);
-            const gRad  = Phaser.Math.DegToRad(this._gravDir);
-            this._speed += 0; // speed no cambia en tipo 1; la gravedad la aplica el body
-            this.body.velocity.x += Math.cos(gRad) * this._gravity * (delta / 16.667);
-            this.body.velocity.y += Math.sin(gRad) * this._gravity * (delta / 16.667);
-        } else {
-            // Aplicar gravedad manualmente (body.allowGravity = false)
-            const gRad = Phaser.Math.DegToRad(this._gravDir);
-            this.body.velocity.x += Math.cos(gRad) * this._gravity * (delta / 16.667) * 60;
-            this.body.velocity.y += Math.sin(gRad) * this._gravity * (delta / 16.667) * 60;
-        }
+        // GML: speed += gravity cada frame a 30fps
+        // speed está en px/frame, Phaser en px/s → gravity en px/frame = gravity * 30 px/s
+        // Pero como ya estamos en throttle 30fps, solo aplicamos gravity * 30 una vez por frame lógico
+        // Para que no frene demasiado rápido: gravity_px_per_logical_frame = gravity * 30
+        this.body.velocity.x += Math.cos(this._gravRad) * this._gravity * 30;
+        this.body.velocity.y += Math.sin(this._gravRad) * this._gravity * 30;
 
-        // Animar
+        // Animar entre 3 frames
         const frame = Math.floor((this._timer * 0.25) % 3);
         this.setTexture(`mantle_fire2_${frame}`);
 
