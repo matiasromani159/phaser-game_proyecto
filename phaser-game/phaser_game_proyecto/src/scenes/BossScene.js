@@ -170,6 +170,9 @@ export default class BossScene extends Phaser.Scene {
         this.bossHitSound= this.sound.add('snd_board_bosshit', { volume: 0.8 });
 
         // ── Música ────────────────────────────────────────────
+        // Parar cualquier música que venga de la room anterior
+        this.sound.getAll().forEach(s => { if (s.isPlaying) s.stop(); });
+
         this.music = this.sound.add('nightmare_boss', { loop: true, volume: 0.6 });
         this.music.play();
 
