@@ -7,7 +7,7 @@ import { ShadowMantleEnemy } from './ShadowMantleEnemy.js';
 export class ShadowMantleFire3 extends Phaser.Physics.Arcade.Sprite {
 
     constructor(scene, x, y, opts = {}) {
-        super(scene, x, y, 'mantle_fire2_0');
+        super(scene, x, y, 'mantle_fire_0');
 
         scene.add.existing(this);
         scene.physics.add.existing(this);
@@ -39,23 +39,18 @@ export class ShadowMantleFire3 extends Phaser.Physics.Arcade.Sprite {
     }
 
     init() {
-        // GML: speed en px/frame a 30fps → * 30 = px/s en Phaser
+        // GML: speed px/frame a 30fps → px/s en Phaser = speed * 30
+        // Pero ahora a 60fps usamos * 15 (30/2) para que visualmente sea igual
         if (this._speed !== 0) {
             this.body.setVelocity(
-                Math.cos(this._dirRad) * this._speed * 30,
-                Math.sin(this._dirRad) * this._speed * 30
+                Math.cos(this._dirRad) * this._speed * 15,
+                Math.sin(this._dirRad) * this._speed * 15
             );
         }
-        // Si speed=0 (tipo 8), la gravedad lo acelera desde cero
     }
 
     actualizar(delta) {
         if (this.isDead) return;
-
-        // Throttle a 30fps
-        this._deltaAccum = (this._deltaAccum ?? 0) + delta;
-        if (this._deltaAccum < 33.333) return;
-        this._deltaAccum -= 33.333;
 
         this._timer++;
 
@@ -70,18 +65,15 @@ export class ShadowMantleFire3 extends Phaser.Physics.Arcade.Sprite {
             }
         }
 
-        // GML: speed += gravity cada frame a 30fps
-        // speed está en px/frame, Phaser en px/s → gravity en px/frame = gravity * 30 px/s
-        // Pero como ya estamos en throttle 30fps, solo aplicamos gravity * 30 una vez por frame lógico
-        // Para que no frene demasiado rápido: gravity_px_per_logical_frame = gravity * 30
-        this.body.velocity.x += Math.cos(this._gravRad) * this._gravity * 30;
-        this.body.velocity.y += Math.sin(this._gravRad) * this._gravity * 30;
+        // Gravedad: GML aplica gravity px/frame a 30fps → /2 para 60fps
+        // velocity en px/s → gravity * 30 / 2 = gravity * 15
+        this.body.velocity.x += Math.cos(this._gravRad) * this._gravity * 15;
+        this.body.velocity.y += Math.sin(this._gravRad) * this._gravity * 15;
 
-        // Animar entre 3 frames
-        const frame = Math.floor((this._timer * 0.25) % 3);
-        this.setTexture(`mantle_fire2_${frame}`);
+        const frame = Math.floor((this._timer * 0.125) % 3);
+        this.setTexture(`mantle_fire_${frame}`);
 
-        if (this._timer >= 100) {
+        if (this._timer >= 200) {  // 100*2
             this.isDead = true;
             this.destroy();
         }
@@ -116,17 +108,17 @@ export class ShadowMantleGroundfire extends Phaser.Physics.Arcade.Sprite {
 
         this._timer++;
 
-        if (this._timer === 20)  this.activeHitbox = false;
-        if (this._timer === 30)  { this.isDead = true; this.destroy(); }
+        if (this._timer === 40)  this.activeHitbox = false;   // 20*2
+        if (this._timer === 60)  { this.isDead = true; this.destroy(); }  // 30*2
 
         // Crecer desde pequeño hasta escala 2
         if (this.scaleX < 2) {
-            this.setScale(Math.min(this.scaleX + 0.2, 2));
+            this.setScale(Math.min(this.scaleX + 0.1, 2));  // 0.2/2
         }
 
         // Desvanecer al final
-        if (this._timer > 20) {
-            this.setAlpha(1 - ((this._timer - 20) / 10));
+        if (this._timer > 40) {
+            this.setAlpha(1 - ((this._timer - 40) / 20));  // 20*2, 10*2
         }
     }
 }

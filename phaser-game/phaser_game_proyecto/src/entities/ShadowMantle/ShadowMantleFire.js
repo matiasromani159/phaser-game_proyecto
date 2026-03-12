@@ -41,34 +41,29 @@ export class ShadowMantleFire extends Phaser.Physics.Arcade.Sprite {
     actualizar(delta) {
         if (this.isDead) return;
 
-        // Throttle a 30fps igual que el boss
-        this._deltaAccum = (this._deltaAccum ?? 0) + delta;
-        if (this._deltaAccum < 33.333) return;
-        this._deltaAccum -= 33.333;
-
         // Seguir al target (boss)
         if (!this._rotatorTarget || this._rotatorTarget.isDead) {
             this._destroy(); return;
         }
 
-        // Actualizar posición orbital
+        // Actualizar posición orbital — place_speed * 0.5 porque GML era 30fps
         const tx = this._rotatorTarget.x + 16;
         const ty = this._rotatorTarget.y + 16;
         this.x = tx + Math.cos(Phaser.Math.DegToRad(this._place)) * this._len;
         this.y = ty + Math.sin(Phaser.Math.DegToRad(this._place)) * this._len;
-        this._place += this._placeSpeed;
-        this._len   += this._lenSpeed;
+        this._place += this._placeSpeed * 0.5;
+        this._len   += this._lenSpeed   * 0.5;
 
         // Lógica por tipo
         this._updateByType();
 
         // Animar sprite
         this._alphaTimer++;
-        const frame = Math.floor((this._alphaTimer * 0.25) % 3);
+        const frame = Math.floor((this._alphaTimer * 0.125) % 3); // 0.25/2
         this.setTexture(`mantle_fire_${frame}`);
 
-        // Destruir por tiempo
-        if (this._alphaTimer >= this._maxAlphaTimer) {
+        // Destruir por tiempo — maxAlphaTimer * 2 porque ahora corre a 60fps
+        if (this._alphaTimer >= this._maxAlphaTimer * 2) {
             this._destroy();
         }
     }
@@ -78,14 +73,14 @@ export class ShadowMantleFire extends Phaser.Physics.Arcade.Sprite {
 
         if (this._type === 0) {
             this._timer++;
-            if (t === 20) this._lenSpeed = 8;
-            if (t > 20)   this._lenSpeed = Math.max(this._lenSpeed - 0.3, -6);
+            if (t === 40)  this._lenSpeed = 8;           // 20 * 2
+            if (t > 40)    this._lenSpeed = Math.max(this._lenSpeed - 0.15, -6); // 0.3/2
         }
 
         if (this._type === 1) {
             this._timer++;
-            if (t === 1)  this._placeSpeed = 0;
-            if (t > 20)   this._lenSpeed = Math.max(this._lenSpeed - 0.6, -6);
+            if (t === 1)   this._placeSpeed = 0;
+            if (t > 40)    this._lenSpeed = Math.max(this._lenSpeed - 0.3, -6);  // 0.6/2
         }
 
         if (this._type === 2) {
@@ -98,9 +93,10 @@ export class ShadowMantleFire extends Phaser.Physics.Arcade.Sprite {
         if (this._type === 3) {
             if (this._con === 1) {
                 this._timer++;
+                // Tiempos * 2 porque 60fps
                 const speeds = [
-                    [1,   5], [31,  0], [46, -5], [76,  0],
-                    [91,  5], [121, 0], [136,-5], [166, 0],
+                    [2,   5], [62,  0], [92, -5], [152, 0],
+                    [182, 5], [242, 0], [272,-5], [332, 0],
                 ];
                 for (const [at, spd] of speeds) {
                     if (t === at) this._lenSpeed = spd;
@@ -111,42 +107,30 @@ export class ShadowMantleFire extends Phaser.Physics.Arcade.Sprite {
         if (this._type === 4) {
             if (this._con === 1) {
                 this._timer++;
-                if (t >= 1 && t < 13)
-                    this._len = Phaser.Math.Linear(this._len, 14, t / 20);
-                if (t === 16) {
-                    this._lenSpeed = 16;
-                }
-                if (t === 17) {
-                    this.activeHitbox = true;
-                }
+                if (t >= 1 && t < 26)                    // 13*2
+                    this._len = Phaser.Math.Linear(this._len, 14, t / 40); // 20*2
+                if (t === 32) this._lenSpeed = 16;        // 16*2
+                if (t === 34) this.activeHitbox = true;   // 17*2
             }
         }
 
         if (this._type === 4.5) {
             if (this._con === 1) {
                 this._timer++;
-                if (t >= 1 && t < 17)
-                    this._len = Phaser.Math.Linear(this._len, 14, t / 26);
-                if (t === 21) {
-                    this._lenSpeed = 16;
-                }
-                if (t === 22) {
-                    this.activeHitbox = true;
-                }
+                if (t >= 1 && t < 34)                    // 17*2
+                    this._len = Phaser.Math.Linear(this._len, 14, t / 52); // 26*2
+                if (t === 42) this._lenSpeed = 16;        // 21*2
+                if (t === 44) this.activeHitbox = true;   // 22*2
             }
         }
 
         if (this._type === 5) {
             if (this._con === 1) {
                 this._timer++;
-                if (t >= 1 && t < 8)
-                    this._len = Phaser.Math.Linear(this._len, 14, t / 10);
-                if (t === 10) {
-                    this._lenSpeed = 16;
-                }
-                if (t === 11) {
-                    this.activeHitbox = true;
-                }
+                if (t >= 1 && t < 16)                    // 8*2
+                    this._len = Phaser.Math.Linear(this._len, 14, t / 20); // 10*2
+                if (t === 20) this._lenSpeed = 16;        // 10*2
+                if (t === 22) this.activeHitbox = true;   // 11*2
             }
         }
     }

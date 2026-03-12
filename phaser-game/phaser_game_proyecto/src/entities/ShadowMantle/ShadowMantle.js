@@ -159,13 +159,12 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
     actualizar(delta) {
         if (this.isDead) return;
 
-        // Shadow Mantle corre a 30fps como en Deltarune (GML).
-        // Acumulamos delta y solo ejecutamos lógica cada ~33ms.
+        // Throttle a 30fps — demasiados timers GML para ajustar individualmente
         this._deltaAccum = (this._deltaAccum ?? 0) + delta;
         if (this._deltaAccum < 33.333) return;
         this._deltaAccum -= 33.333;
 
-        const dt = 1; // 1 paso lógico = 1 frame a 30fps
+        const dt = 1;
 
         // hurttimer
         if (this.hurttimer > 0) {

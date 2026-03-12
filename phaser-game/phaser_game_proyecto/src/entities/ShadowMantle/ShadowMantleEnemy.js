@@ -49,22 +49,17 @@ export class ShadowMantleEnemy extends Phaser.Physics.Arcade.Sprite {
     actualizar(delta) {
         if (this.isDead) return;
 
-        // Throttle a 30fps igual que el boss
-        this._deltaAccum = (this._deltaAccum ?? 0) + delta;
-        if (this._deltaAccum < 33.333) return;
-        this._deltaAccum -= 33.333;
-
         this._spdtimer++;
-        if (this._spdtimer > 60 && this._spdtimer < 180)
-            this._spd = Math.round(Phaser.Math.Linear(5, 2, (this._spdtimer - 60) / 120));
-        if (this._spdtimer >= 180)
+        if (this._spdtimer > 120 && this._spdtimer < 360)  // 60*2, 180*2
+            this._spd = Math.round(Phaser.Math.Linear(5, 2, (this._spdtimer - 120) / 240));
+        if (this._spdtimer >= 360)
             this._spd = 2;
 
         // hurttimer
         if (this._hurttimer > 0) {
             this._hurttimer--;
             // Retroceder en dirección de golpe
-            if (this._hurttimer > 6) {
+            if (this._hurttimer > 12) {
                 const pushDir = this._hitdir;
                 const dx = [0,1,0,-1][pushDir] ?? 0;
                 const dy = [1,0,-1,0][pushDir] ?? 0;
@@ -75,7 +70,7 @@ export class ShadowMantleEnemy extends Phaser.Physics.Arcade.Sprite {
                 }
             }
             if (this._hurttimer === 0) {
-                this._alivetimer = 600;
+                this._alivetimer = 1200;
                 this.activeHitbox = false;
             }
             return;
@@ -107,7 +102,7 @@ export class ShadowMantleEnemy extends Phaser.Physics.Arcade.Sprite {
             }
 
             // Tiempo de vida agotado o no puede encontrar camino
-            if ((this._alivetimer >= 300 || this._cantFindPath) && this._state !== 'disappear')
+            if ((this._alivetimer >= 600 || this._cantFindPath) && this._state !== 'disappear')
                 this._enterDisappear();
 
             this._xprevious = this.x;
@@ -209,13 +204,13 @@ export class ShadowMantleEnemy extends Phaser.Physics.Arcade.Sprite {
     takeHit(hitdir) {
         if (this._hurttimer > 0 || this._state === 'disappear') return;
 
-        this._hurttimer   = 12;
+        this._hurttimer   = 24;
         this.activeHitbox = false;
         this._hitdir      = hitdir;
         this._hit         = 1;
 
         // Tras recibir golpe → disappear
-        this._alivetimer = 600;
+        this._alivetimer = 1200;
         this._enterDisappear();
     }
 

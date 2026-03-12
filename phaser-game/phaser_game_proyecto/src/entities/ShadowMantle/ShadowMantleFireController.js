@@ -44,11 +44,6 @@ export class ShadowMantleFireController {
         if (this.isDead) return;
         if (!this._boss || this._boss.isDead) { this._destroy(); return; }
 
-        // Throttle a 30fps igual que el boss
-        this._deltaAccum = (this._deltaAccum ?? 0) + delta;
-        if (this._deltaAccum < 33.333) return;
-        this._deltaAccum -= 33.333;
-
         const t = this._type;
 
         if (t === 0 || t === 1) this._updateType01();
@@ -64,13 +59,9 @@ export class ShadowMantleFireController {
 
     _updateType01() {
         this._timer++;
-        if (this._timer === 3) {
+        if (this._timer === 6) {          // 3*2
             if (this._count < 6) {
-                const fire = this._createFire(this._type);
-                if (this._type === 1 && this._count === 5) {
-                    // Al terminar tipo 1: activar len_speed en todas
-                    // se hace cuando count llega a 6
-                }
+                this._createFire(this._type);
                 this._timer = 0;
                 this._count++;
             } else {
@@ -84,7 +75,7 @@ export class ShadowMantleFireController {
 
     _updateType2() {
         this._timer++;
-        if (this._timer === 3) {
+        if (this._timer === 6) {          // 3*2
             if (this._count < 6) {
                 const fire = this._createFire(2);
                 fire._place      = this._offset + (this._count * 60);
@@ -101,7 +92,7 @@ export class ShadowMantleFireController {
 
     _updateType3() {
         this._timer++;
-        if (this._timer === 3) {
+        if (this._timer === 6) {          // 3*2
             if (this._count < 6) {
                 const fire = this._createFire(3);
                 fire._place      = this._offset + (this._count * 60);
@@ -117,13 +108,10 @@ export class ShadowMantleFireController {
     }
 
     _updateType4() {
-        // Parpadear las llamas existentes mientras se crean las nuevas
-        this._fires.forEach(f => {
-            f.alpha = f.alpha === 1 ? 0 : 1;
-        });
+        this._fires.forEach(f => { f.alpha = f.alpha === 1 ? 0 : 1; });
 
         this._timer++;
-        if (this._timer === 1 && this._con2 === 0) {
+        if (this._timer === 2 && this._con2 === 0) {  // 1*2
             if (this._count < 6) {
                 const fire = this._createFire(4);
                 fire._place      = this._offset + (this._count * 60);
@@ -137,19 +125,17 @@ export class ShadowMantleFireController {
             }
         }
 
-        if (this._timer === 16) {
+        if (this._timer === 32) {         // 16*2
             this._fires.forEach(f => { f.alpha = 1; });
             this._destroy();
         }
     }
 
     _updateType45() {
-        this._fires.forEach(f => {
-            f.alpha = f.alpha === 1 ? 0 : 1;
-        });
+        this._fires.forEach(f => { f.alpha = f.alpha === 1 ? 0 : 1; });
 
         this._timer++;
-        if (this._timer === 1 && this._con2 === 0) {
+        if (this._timer === 2 && this._con2 === 0) {  // 1*2
             if (this._count < 6) {
                 const fire = this._createFire(4.5);
                 fire._place      = this._offset + (this._count * 60);
@@ -163,19 +149,17 @@ export class ShadowMantleFireController {
             }
         }
 
-        if (this._timer === 21) {
+        if (this._timer === 42) {         // 21*2
             this._fires.forEach(f => { f.alpha = 1; });
             this._destroy();
         }
     }
 
     _updateType5() {
-        this._fires.forEach(f => {
-            f.alpha = f.alpha === 1 ? 0 : 1;
-        });
+        this._fires.forEach(f => { f.alpha = f.alpha === 1 ? 0 : 1; });
 
         this._timer++;
-        if (this._timer === 2 && this._con2 === 0) {
+        if (this._timer === 4 && this._con2 === 0) {  // 2*2
             if (this._count < 6) {
                 const fire = this._createFire(5);
                 fire._place      = this._offset + (this._count * 60);
@@ -189,7 +173,7 @@ export class ShadowMantleFireController {
             }
         }
 
-        if (this._timer === 10) {
+        if (this._timer === 20) {         // 10*2
             this._fires.forEach(f => { f.alpha = 1; });
             this._destroy();
         }
@@ -198,63 +182,58 @@ export class ShadowMantleFireController {
     _updateType6() {
         this._fireballTimer++;
 
-        if (this._fireballTimer > 30 && this._fireballCount < 3) {
+        if (this._fireballTimer > 60 && this._fireballCount < 3) {  // 30*2
             for (let i = 0; i < 6; i++) {
                 const dir = (i * 60) + (this._totalCount * 5);
                 const fb  = new ShadowMantleFire3(
-                    this.scene,
-                    this._boss.x + 16,
-                    this._boss.y + 16,
-                    { direction: dir, gravity: 0.2333, activetimer: 20 }
+                    this.scene, this._boss.x + 16, this._boss.y + 16,
+                    { direction: dir, gravity: 0.2333, activetimer: 40 }  // activetimer*2
                 );
                 this.scene.bossBullets.add(fb); fb.init();
             }
             this._fireballCount++;
             this._totalCount++;
-            this._fireballTimer -= 2;
+            this._fireballTimer -= 4;     // 2*2
         }
 
-        if (this._fireballTimer >= 40) this._destroy();
+        if (this._fireballTimer >= 80) this._destroy();  // 40*2
     }
 
     _updateType7() {
         this._fireballTimer++;
 
-        if (this._fireballTimer > 30 && this._fireballCount < 3) {
+        if (this._fireballTimer > 60 && this._fireballCount < 3) {  // 30*2
             for (let i = 0; i < 6; i++) {
                 const dir = (i * 60) + (this._totalCount * 5);
                 const fb  = new ShadowMantleFire3(
-                    this.scene,
-                    this._boss.x + 16,
-                    this._boss.y + 16,
-                    { direction: dir, gravity: 0.3667, activetimer: 18 }
+                    this.scene, this._boss.x + 16, this._boss.y + 16,
+                    { direction: dir, gravity: 0.3667, activetimer: 36 }  // 18*2
                 );
                 this.scene.bossBullets.add(fb); fb.init();
             }
             this._fireballCount++;
             this._totalCount++;
-            this._fireballTimer -= 2;
+            this._fireballTimer -= 4;     // 2*2
         }
 
-        if (this._fireballTimer >= 40) this._destroy();
+        if (this._fireballTimer >= 80) this._destroy();  // 40*2
     }
 
     _updateType8() {
-        this._spinA      += 0.5;
+        this._spinA      += 0.25;         // 0.5/2
         this._spinSpeed   = 1.6 + (Math.sin(this._spinA / 6) * 1.2);
         if (this._spinSpeed < 1.5) this._spinSpeed = 1.5;
-        this._angle      += this._spinSpeed;
+        this._angle      += this._spinSpeed * 0.5;  // /2
 
-        // Bombas especiales en ángulos concretos
-        if (this._spinA === 40 || this._spinA === 100) {
-            // Bomb spawn — usar posición aleatoria como en GML
+        // Bombas en spinA equivalente a 40 y 100 a 30fps → 20 y 50 a 60fps
+        if (this._spinA === 20 || this._spinA === 50) {
             const tx = 160 + Phaser.Math.Between(0,9) * 32;
             const ty = 96  + Phaser.Math.Between(0,4) * 32;
             const bomb = new ShadowMantleBomb(this.scene, this._boss.x+16, this._boss.y+16, tx, ty);
             this.scene.bossBullets.add(bomb);
         }
 
-        if (this._spinA === 70) {
+        if (this._spinA === 35) {         // 70/2
             const bomb = new ShadowMantleBomb(
                 this.scene, this._boss.x+16, this._boss.y+29,
                 464, 160 + Phaser.Math.Between(0,2)*32 + 29
@@ -264,22 +243,22 @@ export class ShadowMantleFireController {
 
         this._fireballTimer++;
 
-        if (this._fireballTimer > 30 && this._fireballCount < 50) {
+        if (this._fireballTimer > 60 && this._fireballCount < 50) {  // 30*2
             for (let i = 0; i < 3; i++) {
                 const dir = (i * 120) + this._angle;
                 const fb  = new ShadowMantleFire3(
                     this.scene,
                     this._boss.x + 16 + Math.cos(Phaser.Math.DegToRad(dir)) * 24,
                     this._boss.y + 16 + Math.sin(Phaser.Math.DegToRad(dir)) * 24,
-                    { direction: dir, gravity: 0.7, activetimer: 10, type: 1 }
+                    { direction: dir, gravity: 0.7, activetimer: 20, type: 1 }  // 10*2
                 );
                 this.scene.bossBullets.add(fb); fb.init();
             }
             this._fireballCount++;
-            this._fireballTimer -= 4;
+            this._fireballTimer -= 8;     // 4*2
         }
 
-        if (this._fireballTimer >= 32) this._destroy();
+        if (this._fireballTimer >= 64) this._destroy();  // 32*2
     }
 
     _createFire(type) {

@@ -35,12 +35,9 @@ export class ShadowMantleBomb extends Phaser.Physics.Arcade.Sprite {
         if (this.isDead) return;
 
         // Throttle a 30fps igual que el boss
-        this._deltaAccum = (this._deltaAccum ?? 0) + delta;
-        if (this._deltaAccum < 33.333) return;
-        this._deltaAccum -= 33.333;
 
         if (this._con === 1) {
-            this._timer += 2;
+            this._timer += 1;
 
             // Arco parabólico
             const t     = this._timer / 60;
@@ -69,7 +66,7 @@ export class ShadowMantleBomb extends Phaser.Physics.Arcade.Sprite {
         if (this._con === 2) {
             this._timer++;
 
-            if (this._timer === 20) {
+            if (this._timer === 40) {
                 // Crear cloud y destruirse
                 const cloud = new ShadowMantleCloud(
                     this.scene,
@@ -119,11 +116,8 @@ export class ShadowMantleCloud extends Phaser.Physics.Arcade.Sprite {
         if (this._con !== 1) return;
 
         // Throttle a 30fps
-        this._deltaAccum = (this._deltaAccum ?? 0) + delta;
-        if (this._deltaAccum < 33.333) return;
-        this._deltaAccum -= 33.333;
 
-        this._imageIndex += 0.25;
+        this._imageIndex += 0.125;
         const frame = Math.floor(this._imageIndex);
 
         if (frame < 4) {
@@ -131,12 +125,12 @@ export class ShadowMantleCloud extends Phaser.Physics.Arcade.Sprite {
         }
 
         // Al llegar al frame 1 → disparar en 4 direcciones
-        if (this._imageIndex >= 1 && !this._fired) {
+        if (this._imageIndex >= 0.5 && !this._fired) {
             this._fired = true;
             this._fireCardinal();
         }
 
-        if (this._imageIndex >= 3) {
+        if (this._imageIndex >= 1.5) {
             this.isDead = true;
             this.destroy();
         }
@@ -201,14 +195,11 @@ export class ShadowMantleCloudBullet extends Phaser.Physics.Arcade.Sprite {
         if (this.isDead) return;
 
         // Throttle a 30fps
-        this._deltaAccum = (this._deltaAccum ?? 0) + delta;
-        if (this._deltaAccum < 33.333) return;
-        this._deltaAccum -= 33.333;
 
         this._timer++;
 
         // Animar (image_speed = 0.25 en GML)
-        this._imageIndex = (this._imageIndex + 0.25) % 2;
+        this._imageIndex = (this._imageIndex + 0.125) % 2;
         this.setTexture(`mantle_cloud_projectile_${Math.floor(this._imageIndex)}`);
 
         // Actualizar trail
@@ -225,7 +216,7 @@ export class ShadowMantleCloudBullet extends Phaser.Physics.Arcade.Sprite {
             this._trailSprites[i].setAngle(this.angle);
         }
 
-        if (this._timer >= 30) this._destroy();
+        if (this._timer >= 60) this._destroy();
     }
 
     _destroy() {
