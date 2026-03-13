@@ -94,17 +94,18 @@ export default class BossScene extends Phaser.Scene {
             this.load.image(`enemy_walk_${i}`,   `/src/assets/sprites/spr_monster/spr_monster_${i % 2}.png`);
 
         // ── Sonidos del boss ──────────────────────────────────
-        this.load.audio('snd_board_bosshit',           '/src/assets/sounds/snd_hurt.wav');
-        this.load.audio('snd_board_mantle_laugh_mid',  '/src/assets/sounds/snd_board_text_main.wav');
-        this.load.audio('snd_board_mantle_dash_slow',  '/src/assets/sounds/snd_sword.wav');
-        this.load.audio('snd_board_mantle_dash_fast',  '/src/assets/sounds/snd_sword.wav');
-        this.load.audio('snd_board_throw',             '/src/assets/sounds/snd_sword.wav');
-        this.load.audio('snd_bump',                    '/src/assets/sounds/snd_hurt.wav');
-        this.load.audio('snd_board_bomb',              '/src/assets/sounds/snd_hurt.wav');
-        this.load.audio('snd_board_summon',            '/src/assets/sounds/snd_board_lift.wav');
-        this.load.audio('snd_board_torch',             '/src/assets/sounds/snd_board_lift.wav');
-        this.load.audio('snd_board_mantle_move',       '/src/assets/sounds/snd_board_lift.wav');
-        this.load.audio('snd_wing',                    '/src/assets/sounds/snd_board_lift.wav');
+        this.load.audio('snd_board_bosshit',           '/src/assets/sounds/snd_boss/snd_board_bosshit.wav');
+        this.load.audio('snd_board_mantle_laugh_mid',  '/src/assets/sounds/snd_boss/snd_board_mantle_laugh_mid.wav');
+        this.load.audio('snd_board_mantle_dash_slow',  '/src/assets/sounds/snd_boss/snd_board_mantle_dash_slow.wav');
+        this.load.audio('snd_board_mantle_dash_fast',  '/src/assets/sounds/snd_boss/snd_board_mantle_dash_fast.wav');
+        this.load.audio('snd_board_throw',             '/src/assets/sounds/snd_boss/snd_board_throw.wav');
+        this.load.audio('snd_bump',                    '/src/assets/sounds/snd_boss/snd_bump.wav');
+        this.load.audio('snd_board_bomb',              '/src/assets/sounds/snd_boss/snd_board_bomb.wav');
+        this.load.audio('snd_board_summon',            '/src/assets/sounds/snd_boss/snd_board_summon.wav');
+        this.load.audio('snd_board_torch',             '/src/assets/sounds/snd_boss/snd_board_torch.wav');
+        this.load.audio('snd_board_torch_high',        '/src/assets/sounds/snd_boss/snd_board_torch_high.wav');
+        this.load.audio('snd_board_mantle_move',       '/src/assets/sounds/snd_boss/snd_board_mantle_move.wav');
+        this.load.audio('snd_wing',                    '/src/assets/sounds/snd_boss/snd_wing.wav');
 
         // ── HUD ───────────────────────────────────────────────
         for (let i = 0; i < 6; i++)
@@ -274,7 +275,6 @@ export default class BossScene extends Phaser.Scene {
 
         // Jugador ← proyectiles del boss
         this.physics.add.overlap(this.player, this.bossBullets, (player, bullet) => {
-            // Verificar si el proyectil tiene hitbox activa
             const hasActiveHitbox =
                 bullet.activeHitbox !== undefined ? bullet.activeHitbox : true;
             if (!hasActiveHitbox) return;
@@ -284,6 +284,10 @@ export default class BossScene extends Phaser.Scene {
                 player.takeDamage(bullet.damage ?? 2);
                 player.lastDamageTime = ahora;
                 this.hitSound.play();
+                // Retroceso alejándose del proyectil
+                const angle = Phaser.Math.Angle.Between(bullet.x, bullet.y, player.x, player.y);
+                player.setVelocity(Math.cos(angle) * 300, Math.sin(angle) * 300);
+                this.time.delayedCall(150, () => { if (!player.isDead) player.setVelocity(0); });
             }
             if (bullet.destroyonhit ?? true) bullet.destroy();
         });
@@ -295,6 +299,10 @@ export default class BossScene extends Phaser.Scene {
                 player.takeDamage(2);
                 player.lastDamageTime = ahora;
                 this.hitSound.play();
+                // Retroceso alejándose del boss
+                const angle = Phaser.Math.Angle.Between(boss.x, boss.y, player.x, player.y);
+                player.setVelocity(Math.cos(angle) * 300, Math.sin(angle) * 300);
+                this.time.delayedCall(150, () => { if (!player.isDead) player.setVelocity(0); });
             }
         });
 
@@ -306,6 +314,10 @@ export default class BossScene extends Phaser.Scene {
                 player.takeDamage(enemy.damage ?? 2);
                 player.lastDamageTime = ahora;
                 this.hitSound.play();
+                // Retroceso alejándose del enemigo
+                const angle = Phaser.Math.Angle.Between(enemy.x, enemy.y, player.x, player.y);
+                player.setVelocity(Math.cos(angle) * 300, Math.sin(angle) * 300);
+                this.time.delayedCall(150, () => { if (!player.isDead) player.setVelocity(0); });
             }
         });
 

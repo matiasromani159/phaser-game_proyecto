@@ -13,7 +13,7 @@ export class ShadowMantleFire3 extends Phaser.Physics.Arcade.Sprite {
         scene.physics.add.existing(this);
 
         this.body.allowGravity = false;
-        this.setScale(2);
+        this.setScale(1);
 
         const dir  = opts.direction ?? 0;
         const spd  = opts.speed     ?? 2;
@@ -63,6 +63,11 @@ export class ShadowMantleFire3 extends Phaser.Physics.Arcade.Sprite {
                 this.activeHitbox = true;
                 this.alpha        = 1;
             }
+        }
+
+        // Tipo 1 (espiral fase 4): hitbox activa desde el primer frame
+        if (this._type === 1 && this._timer === 1) {
+            this.activeHitbox = true;
         }
 
         // Gravedad: GML aplica gravity px/frame a 30fps → /2 para 60fps

@@ -187,7 +187,7 @@ export class ShadowMantleFireController {
                 const dir = (i * 60) + (this._totalCount * 5);
                 const fb  = new ShadowMantleFire3(
                     this.scene, this._boss.x + 16, this._boss.y + 16,
-                    { direction: dir, gravity: 0.2333, activetimer: 40 }  // activetimer*2
+                    { direction: dir, speed: 2, gravity: 0.2333, activetimer: 40 }  // activetimer*2
                 );
                 this.scene.bossBullets.add(fb); fb.init();
             }
@@ -207,7 +207,7 @@ export class ShadowMantleFireController {
                 const dir = (i * 60) + (this._totalCount * 5);
                 const fb  = new ShadowMantleFire3(
                     this.scene, this._boss.x + 16, this._boss.y + 16,
-                    { direction: dir, gravity: 0.3667, activetimer: 36 }  // 18*2
+                    { direction: dir, speed: 2, gravity: 0.3667, activetimer: 36 }  // 18*2
                 );
                 this.scene.bossBullets.add(fb); fb.init();
             }
@@ -250,7 +250,7 @@ export class ShadowMantleFireController {
                     this.scene,
                     this._boss.x + 16 + Math.cos(Phaser.Math.DegToRad(dir)) * 24,
                     this._boss.y + 16 + Math.sin(Phaser.Math.DegToRad(dir)) * 24,
-                    { direction: dir, gravity: 0.7, activetimer: 20, type: 1 }  // 10*2
+                    { direction: dir, speed: 0, gravity: 0.7, activetimer: 20, type: 1 }
                 );
                 this.scene.bossBullets.add(fb); fb.init();
             }

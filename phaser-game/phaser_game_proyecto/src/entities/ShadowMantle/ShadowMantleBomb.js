@@ -13,7 +13,7 @@ export class ShadowMantleBomb extends Phaser.Physics.Arcade.Sprite {
         scene.physics.add.existing(this);
 
         this.body.allowGravity = false;
-        this.setScale(2);
+        this.setScale(1.5);
 
         this._startx   = x;
         this._starty   = y;
@@ -28,7 +28,11 @@ export class ShadowMantleBomb extends Phaser.Physics.Arcade.Sprite {
 
         // Shadow visual
         this._shadow = scene.add.image(x, y, 'mantle_bomb_shadow');
-        this._shadow.setScale(2);
+        this._shadow.setScale(1.5);
+
+        // snd_board_throw al crear la bomba
+        scene.sound.stopByKey('snd_board_throw');
+        scene.sound.play('snd_board_throw', { volume: 0.8, detune: -300 }); // pitch 0.8
     }
 
     actualizar(delta) {
@@ -60,6 +64,9 @@ export class ShadowMantleBomb extends Phaser.Physics.Arcade.Sprite {
                 this._shadow.setVisible(false);
                 this._timer = 0;
                 this._con   = 2;
+                // snd_bump al aterrizar
+                this.scene.sound.stopByKey('snd_bump');
+                this.scene.sound.play('snd_bump');
             }
         }
 
@@ -74,6 +81,9 @@ export class ShadowMantleBomb extends Phaser.Physics.Arcade.Sprite {
                     this.y - 30
                 );
                 this.scene.bossBullets.add(cloud);
+                // snd_board_bomb al explotar
+                this.scene.sound.stopByKey('snd_board_bomb');
+                this.scene.sound.play('snd_board_bomb');
                 this._destroy();
             }
         }
@@ -103,7 +113,7 @@ export class ShadowMantleCloud extends Phaser.Physics.Arcade.Sprite {
         scene.physics.add.existing(this);
 
         this.body.allowGravity = false;
-        this.setScale(2);
+        this.setScale(1.5);
 
         this._con        = 1;
         this._imageIndex = 0;
@@ -170,7 +180,7 @@ export class ShadowMantleCloudBullet extends Phaser.Physics.Arcade.Sprite {
         scene.physics.add.existing(this);
 
         this.body.allowGravity = false;
-        this.setScale(2);
+        this.setScale(1.5);
 
         this._timer      = 0;
         this._imageIndex = 0;
@@ -186,7 +196,7 @@ export class ShadowMantleCloudBullet extends Phaser.Physics.Arcade.Sprite {
         this._trailSprites = [];
         for (let i = 0; i < 4; i++) {
             const t = scene.add.image(x, y, 'mantle_cloud_projectile_0');
-            t.setScale(2).setAlpha(0.4 - i * 0.08);
+            t.setScale(1.5).setAlpha(0.4 - i * 0.08);
             this._trailSprites.push(t);
         }
     }

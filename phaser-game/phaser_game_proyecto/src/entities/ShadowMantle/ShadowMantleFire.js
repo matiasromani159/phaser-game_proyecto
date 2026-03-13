@@ -19,7 +19,7 @@ export class ShadowMantleFire extends Phaser.Physics.Arcade.Sprite {
         scene.physics.add.existing(this);
 
         this.body.allowGravity = false;
-        this.setScale(2);
+        this.setScale(1.5);
 
         this._rotatorTarget = rotatorTarget; // referencia al boss (ShadowMantle)
         this._type          = type;
@@ -36,6 +36,10 @@ export class ShadowMantleFire extends Phaser.Physics.Arcade.Sprite {
 
         // Tipo 3 vive más tiempo
         this._maxAlphaTimer = (type === 3) ? 190 : 50;
+
+        // snd_board_torch al crear la llama orbital
+        scene.sound.stopByKey('snd_board_torch');
+        scene.sound.play('snd_board_torch');
     }
 
     actualizar(delta) {

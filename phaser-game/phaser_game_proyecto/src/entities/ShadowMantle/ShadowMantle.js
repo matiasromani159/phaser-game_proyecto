@@ -27,7 +27,7 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
         scene.add.existing(this);
         scene.physics.add.existing(this);
 
-        this.setScale(2);
+        this.setScale(1);
         this.body.allowGravity = false;
         this.body.setImmovable(false);
 
@@ -119,6 +119,10 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
     takeDamage() {
         if (this.hurttimer > 0) return;
 
+        // snd_board_bosshit al recibir golpe
+        this.scene.sound.stopByKey('snd_board_bosshit');
+        this.scene.sound.play('snd_board_bosshit');
+
         this.hurttimer = 8;
 
         // Daño escalonado según phasetransitioncon y timeshitthisphase
@@ -141,6 +145,9 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
 
             if (this.spawnenemies === 1) this.hitsduringenemies++;
         }
+
+        // Parar dash slow al recibir golpe
+        this.scene.sound.stopByKey('snd_board_mantle_dash_slow');
 
         // Clamp hp mínimo hasta fase 4
         if ((this.phase !== 4 || this.phasetransitioncon === 1) && this.hp < 4)
@@ -452,6 +459,7 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
 
         if (this.telegraphtimer === 0 && this.damagetakenduringattack === 0) {
             this._playAnim('mantle-laugh');
+            this.scene.sound.play('snd_board_mantle_laugh_mid', { detune: 500 }); // pitch 1.3
             this.telegraphtimer = 61;
         }
 
@@ -478,6 +486,8 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
         }
 
         if (t === 15 || t === 30 || t === 45 || t === 60 || t === 75) {
+            this.scene.sound.stopByKey('snd_board_summon');
+            this.scene.sound.play('snd_board_summon');
             const moveType = (t === 30 || t === 75) ? 1 : 0;
             new ShadowMantleEnemySpawn(this.scene, this.x, this.y, moveType, this);
         }
@@ -487,6 +497,7 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
         if (t === 77) {
             this.hitsduringenemies++;
             this._playAnim('mantle-laugh');
+            this.scene.sound.play('snd_board_mantle_laugh_mid', { detune: 500 }); // pitch 1.3
         }
 
         if (t === 106) this._playAnim('mantle-idle');
@@ -578,7 +589,7 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
             const t = this.phasetransitiontimer;
 
             if (t === 25) {
-                // Señal al fondo de la escena
+                this.scene.sound.play('snd_board_mantle_move', { detune: -500 }); // pitch 0.7 ≈ -500 cents
                 this.scene.events.emit('boss-phase-transition');
             }
 
@@ -604,6 +615,12 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
             if (t === 1) {
                 this._playAnim('mantle-dash');
                 this.ohmygodimonfire = 1;
+                this.scene.sound.play('snd_board_torch_high');
+            }
+
+            // Torch high cada 5 frames hasta t=52
+            if (t % 5 === 0 && t < 52 && t > 1) {
+                this.scene.sound.play('snd_board_torch_high');
             }
 
             // Partículas
@@ -695,6 +712,7 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
 
             if (this.telegraphtimer === 0) {
                 this._playAnim('mantle-laugh');
+                this.scene.sound.play('snd_board_mantle_laugh_mid', { detune: 500 }); // pitch 1.3
                 this.telegraphtimer = 46;
             }
 
@@ -720,6 +738,7 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
         if (this.dashtimer === 10 && this._dashFriction === 0) {
             this._playAnim('mantle-dash');
             this.ohmygodimonfire = 1;
+            this.scene.sound.play('snd_wing', { volume: 1.2 });
 
             const offsetX = Phaser.Math.Between(0,1) === 0 ? 0 : (Phaser.Math.Between(0,1) === 0 ? 66 : -66);
             let dir = Phaser.Math.Angle.Between(
@@ -745,6 +764,8 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
         }
 
         if (this.dashtimer === 28) {
+            this.scene.sound.stopByKey('snd_board_mantle_dash_slow');
+            this.scene.sound.play('snd_board_mantle_dash_slow', { detune: Phaser.Math.Between(-50, 50) });
             this._dashFriction    = 0;
             this._dashGravityAmt  = 0.5;
             this._dashSpeed       = 10;
