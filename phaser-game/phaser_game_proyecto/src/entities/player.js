@@ -28,9 +28,12 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         this.isAttacking = false;
 
         // Hitbox de ataque
-        this.attackHitbox = scene.add.rectangle(this.x, this.y, 30, 30, 0xff0000, 0).setOrigin(0.5);
+        this.attackHitbox = scene.add.rectangle(this.x, this.y, 20, 20, 0xff0000, 0).setOrigin(0.5);
         scene.physics.add.existing(this.attackHitbox);
         this.attackHitbox.body.enable = false;
+
+        // Muerte
+        this.isDead = false;
     }
 
     update(cursors) {
@@ -60,44 +63,45 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         } else {
             this.anims.stop();
             switch (this.lastDir) {
-                case 'down': this.setTexture('down0'); break;
-                case 'up': this.setTexture('up0'); break;
-                case 'left': this.setTexture('left0'); break;
+                case 'down':  this.setTexture('down0');  break;
+                case 'up':    this.setTexture('up0');    break;
+                case 'left':  this.setTexture('left0');  break;
                 case 'right': this.setTexture('right0'); break;
             }
         }
 
         this.drawHealthBar();
+        if (this.isDead) return;
     }
 
     attack() {
         if (this.isAttacking) return;
         this.isAttacking = true;
 
-        let animKey, offsetX = 0, offsetY = 0;
+        let animKey, offsetX = 0, offsetY = 0, hitW = 20, hitH = 20;
 
         switch (this.lastDir) {
-            case 'up': animKey = 'attack-up'; offsetY = -20; break;
-            case 'down': animKey = 'attack-down'; offsetY = 20; break;
-            case 'left': animKey = 'attack-left'; offsetX = -20; break;
-            case 'right': animKey = 'attack-right'; offsetX = 20; break;
+            case 'up':    animKey = 'attack-up';    offsetY = -32; hitW = 20; hitH = 16; break;
+            case 'down':  animKey = 'attack-down';  offsetY = 32;  hitW = 20; hitH = 16; break;
+            case 'left':  animKey = 'attack-left';  offsetX = -32; hitW = 16; hitH = 20; break;
+            case 'right': animKey = 'attack-right'; offsetX = 32;  hitW = 16; hitH = 20; break;
         }
 
         this.anims.play(animKey, true);
 
-        // Activar hitbox en dirección del ataque
+        this.attackHitbox.setSize(hitW, hitH);
         this.attackHitbox.x = this.x + offsetX;
         this.attackHitbox.y = this.y + offsetY;
+        this.attackHitbox.body.setSize(hitW, hitH);
         this.attackHitbox.body.enable = true;
 
-        // Animación completa
         this.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
             this.isAttacking = false;
             this.attackHitbox.body.enable = false;
             switch (this.lastDir) {
-                case 'up': this.setTexture('up0'); break;
-                case 'down': this.setTexture('down0'); break;
-                case 'left': this.setTexture('left0'); break;
+                case 'up':    this.setTexture('up0');    break;
+                case 'down':  this.setTexture('down0');  break;
+                case 'left':  this.setTexture('left0');  break;
                 case 'right': this.setTexture('right0'); break;
             }
         });
@@ -106,12 +110,31 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     takeDamage(dano) {
+        if (this.isDead || this.isInvincible) return;
+
         this.vida -= dano;
+
         if (this.vida <= 0) {
             this.vida = 0;
-            console.log("Jugador muerto");
+            this.die();
+            return;
         }
+
         this.startInvincibility(1000);
+    }
+
+    die() {
+        this.isDead = true;
+
+        this.setVelocity(0);
+        this.body.enable = false;
+
+        this.attackHitbox.body.enable = false;
+
+        this.anims.stop();
+        this.setTexture('down0');
+
+        this.scene.playerDied();
     }
 
     drawHealthBar() {
