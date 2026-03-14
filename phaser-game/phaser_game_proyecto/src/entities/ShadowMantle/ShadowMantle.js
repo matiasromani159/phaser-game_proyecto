@@ -168,8 +168,8 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
 
         // Throttle a 30fps — demasiados timers GML para ajustar individualmente
         this._deltaAccum = (this._deltaAccum ?? 0) + delta;
-        if (this._deltaAccum < 33.333) return;
-        this._deltaAccum -= 33.333;
+        if (this._deltaAccum < 25) return;
+        this._deltaAccum -= 25;
 
         const dt = 1;
 

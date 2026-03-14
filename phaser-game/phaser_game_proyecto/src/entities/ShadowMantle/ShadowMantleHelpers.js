@@ -91,7 +91,7 @@ export class ShadowMantleFire3 extends Phaser.Physics.Arcade.Sprite {
 export class ShadowMantleGroundfire extends Phaser.Physics.Arcade.Sprite {
 
     constructor(scene, x, y) {
-        super(scene, x, y, 'mantle_fire_0');
+        super(scene, x, y, 'mantle_fire2_0');
 
         scene.physics.add.existing(this);
         scene.add.existing(this);
@@ -140,7 +140,7 @@ export class ShadowMantleClone extends Phaser.Physics.Arcade.Sprite {
         scene.physics.add.existing(this);
 
         this.body.allowGravity = false;
-        this.setScale(2);
+        this.setScale(1);
 
         this.ohmygodimonfire  = 1;
         this._specialContimer = 0;
@@ -151,11 +151,16 @@ export class ShadowMantleClone extends Phaser.Physics.Arcade.Sprite {
 
         // Efecto on-fire visual
         this._onFireSprite = scene.add.image(x - 16, y - 32, 'mantle_imonfire_0');
-        this._onFireSprite.setScale(2).setTint(0xff0000);
+        this._onFireSprite.setScale(1).setTint(0xff0000);
     }
 
     actualizar(delta) {
         if (this.isDead) return;
+
+        // Throttle a 30fps igual que ShadowMantle principal
+        this._deltaAccum = (this._deltaAccum ?? 0) + delta;
+        if (this._deltaAccum < 25) return;
+        this._deltaAccum -= 25;
 
         const bounds  = this.scene.physics.world.bounds;
         const losses  = this.scene.registry.get('shadow_mantle_losses') ?? 0;

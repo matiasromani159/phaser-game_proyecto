@@ -25,7 +25,7 @@ export class ShadowMantleFire extends Phaser.Physics.Arcade.Sprite {
         this._type          = type;
         this._place         = 0;      // ángulo en grados
         this._placeSpeed    = 2;      // velocidad de rotación
-        this._len           = 40;     // radio de órbita
+        this._len           = (type === 0 || type === 1) ? 12 : 40; // tipos 0/1 empiezan con radio pequeño visible
         this._lenSpeed      = 0;      // cambio de radio por frame
         this._con           = 0;      // flag para tipos 2/3/4/5
         this._timer         = 0;
@@ -51,8 +51,8 @@ export class ShadowMantleFire extends Phaser.Physics.Arcade.Sprite {
         }
 
         // Actualizar posición orbital — place_speed * 0.5 porque GML era 30fps
-        const tx = this._rotatorTarget.x + 16;
-        const ty = this._rotatorTarget.y + 16;
+        const tx = this._rotatorTarget.x;
+        const ty = this._rotatorTarget.y;
         this.x = tx + Math.cos(Phaser.Math.DegToRad(this._place)) * this._len;
         this.y = ty + Math.sin(Phaser.Math.DegToRad(this._place)) * this._len;
         this._place += this._placeSpeed * 0.5;

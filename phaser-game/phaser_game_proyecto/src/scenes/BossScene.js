@@ -87,6 +87,11 @@ export default class BossScene extends Phaser.Scene {
             this.load.image(`mantle_cloud_projectile_${i}`,
                 `/src/assets/sprites/spr_boss/spr_shadow_mantle_cloud_projectile/spr_shadow_mantle_cloud_projectile_${i}.png`);
 
+        // ── Fire2 (proyectil diagonal) ────────────────────────
+        for (let i = 0; i < 3; i++)
+            this.load.image(`mantle_fire2_${i}`,
+                `/src/assets/sprites/spr_boss/spr_shadow_mantle_fire2/spr_shadow_mantle_fire2_${i}.png`);
+
         // ── Enemy sprites (obj___) ────────────────────────────
         for (let i = 0; i < 6; i++)
             this.load.image(`enemy_appear_${i}`, `/src/assets/sprites/spr_monster/spr_monster_0.png`);
@@ -286,8 +291,14 @@ export default class BossScene extends Phaser.Scene {
                 this.hitSound.play();
                 // Retroceso alejándose del proyectil
                 const angle = Phaser.Math.Angle.Between(bullet.x, bullet.y, player.x, player.y);
-                player.setVelocity(Math.cos(angle) * 300, Math.sin(angle) * 300);
-                this.time.delayedCall(150, () => { if (!player.isDead) player.setVelocity(0); });
+                const pushDistance = 60;
+                this.tweens.add({
+                    targets: player,
+                    x: player.x + Math.cos(angle) * pushDistance,
+                    y: player.y + Math.sin(angle) * pushDistance,
+                    duration: 150,
+                    ease: 'Power1'
+                });
             }
             if (bullet.destroyonhit ?? true) bullet.destroy();
         });
@@ -301,8 +312,14 @@ export default class BossScene extends Phaser.Scene {
                 this.hitSound.play();
                 // Retroceso alejándose del boss
                 const angle = Phaser.Math.Angle.Between(boss.x, boss.y, player.x, player.y);
-                player.setVelocity(Math.cos(angle) * 300, Math.sin(angle) * 300);
-                this.time.delayedCall(150, () => { if (!player.isDead) player.setVelocity(0); });
+                const pushDistance = 60;
+                this.tweens.add({
+                    targets: player,
+                    x: player.x + Math.cos(angle) * pushDistance,
+                    y: player.y + Math.sin(angle) * pushDistance,
+                    duration: 150,
+                    ease: 'Power1'
+                });
             }
         });
 
@@ -316,8 +333,14 @@ export default class BossScene extends Phaser.Scene {
                 this.hitSound.play();
                 // Retroceso alejándose del enemigo
                 const angle = Phaser.Math.Angle.Between(enemy.x, enemy.y, player.x, player.y);
-                player.setVelocity(Math.cos(angle) * 300, Math.sin(angle) * 300);
-                this.time.delayedCall(150, () => { if (!player.isDead) player.setVelocity(0); });
+                const pushDistance = 60;
+                this.tweens.add({
+                    targets: player,
+                    x: player.x + Math.cos(angle) * pushDistance,
+                    y: player.y + Math.sin(angle) * pushDistance,
+                    duration: 150,
+                    ease: 'Power1'
+                });
             }
         });
 
