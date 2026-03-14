@@ -778,13 +778,13 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
         }
 
         // Aumentar gravedad + dejar rastro de fuego
-        if (this.dashtimer >= 30 && this.dashtimer % 2 === 0) {
+        if (this.dashtimer >= 30 && this.dashtimer % 4 === 0) {
             if      (this.hp >= 5)          this._dashGravityAmt = (this._dashGravityAmt||0.5) + 0.03 * dt;
             else if (this.losses < 7)        this._dashGravityAmt += 0.03  * dt;
             else if (this.losses < 14)       this._dashGravityAmt += 0.023 * dt;
             else                             this._dashGravityAmt += 0.017 * dt;
 
-            new ShadowMantleGroundfire(this.scene, this.x + 16, this.y + 16);
+            new ShadowMantleGroundfire(this.scene, this.x, this.y);
         }
 
         // Aplicar movimiento de dash

@@ -44,6 +44,11 @@ export class ShadowMantleFireController {
         if (this.isDead) return;
         if (!this._boss || this._boss.isDead) { this._destroy(); return; }
 
+        // Throttle a 30fps igual que el boss principal
+        this._deltaAccum = (this._deltaAccum ?? 0) + delta;
+        if (this._deltaAccum < 33.333) return;
+        this._deltaAccum -= 33.333;
+
         const t = this._type;
 
         if (t === 0 || t === 1) this._updateType01();
@@ -59,7 +64,7 @@ export class ShadowMantleFireController {
 
     _updateType01() {
         this._timer++;
-        if (this._timer === 6) {          // 3*2
+        if (this._timer === 3) {          // 3 frames a 30fps
             if (this._count < 6) {
                 this._createFire(this._type);
                 this._timer = 0;
@@ -267,7 +272,7 @@ export class ShadowMantleFireController {
             this._boss.x, this._boss.y,
             this._boss, type
         );
-        // Ángulo inicial
+        // Ángulo inicial separado para que formen el círculo visible desde el inicio
         fire._place = this._offset + (this._count * 60) + (6 * this._count);
         this.scene.bossBullets.add(fire);
         this._fires.push(fire);

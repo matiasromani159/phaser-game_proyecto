@@ -16,7 +16,7 @@ const config = {
     scene: [Room1, Room2, BossScene, GameOverScene, SaveScene],
     physics: {
         default: 'arcade',
-        arcade: { debug: true }
+        arcade: { debug: false }
     },
     pixelArt: true,     // para pixel art
     roundPixels: true   // evita temblor de sprites

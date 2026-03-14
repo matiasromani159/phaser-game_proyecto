@@ -134,6 +134,10 @@ export class ShadowMantleGroundfire extends Phaser.Physics.Arcade.Sprite {
 export class ShadowMantleClone extends Phaser.Physics.Arcade.Sprite {
 
     constructor(scene, x, y) {
+        // Aura ANTES del sprite para que quede detrás
+        const onFireSprite = scene.add.image(x, y, 'mantle_imonfire_0');
+        onFireSprite.setScale(2).setTint(0xff0000);
+
         super(scene, x, y, 'mantle_dash_0');
 
         scene.add.existing(this);
@@ -149,9 +153,7 @@ export class ShadowMantleClone extends Phaser.Physics.Arcade.Sprite {
         this.isDead           = false;
         this.damage           = 2;
 
-        // Efecto on-fire visual
-        this._onFireSprite = scene.add.image(x - 16, y - 32, 'mantle_imonfire_0');
-        this._onFireSprite.setScale(1).setTint(0xff0000);
+        this._onFireSprite = onFireSprite;
     }
 
     actualizar(delta) {
@@ -166,7 +168,6 @@ export class ShadowMantleClone extends Phaser.Physics.Arcade.Sprite {
         const losses  = this.scene.registry.get('shadow_mantle_losses') ?? 0;
 
         if (this._dashcon === 1) {
-            // Elegir dirección hacia un punto aleatorio de la arena
             const targetX = 170 + Phaser.Math.Between(0, 295);
             const targetY = 270;
             const dir = Phaser.Math.Angle.Between(this.x, this.y + 16, targetX, targetY);
@@ -181,17 +182,15 @@ export class ShadowMantleClone extends Phaser.Physics.Arcade.Sprite {
         if (this._dashcon === 2) {
             this._dashtimer++;
 
-            if (this._dashtimer >= 30 && this._dashtimer % 2 === 0) {
+            if (this._dashtimer >= 30 && this._dashtimer % 4 === 0) {
                 if      (losses < 7)  this._dashGravity += 0.03  * (delta / 16.667);
                 else if (losses < 14) this._dashGravity += 0.023 * (delta / 16.667);
                 else                  this._dashGravity += 0.017 * (delta / 16.667);
 
-                new ShadowMantleGroundfire(this.scene, this.x + 16, this.y + 16);
-                // ShadowMantleGroundfire ya se auto-registra en bossBullets
+                new ShadowMantleGroundfire(this.scene, this.x, this.y);
             }
 
             // Aplicar movimiento
-            const gravDir = this._dashDir + Math.PI;
             this._dashSpeed += this._dashGravity * (delta / 16.667);
             this.x += Math.cos(this._dashDir) * this._dashSpeed;
             this.y += Math.sin(this._dashDir) * this._dashSpeed;
@@ -199,7 +198,7 @@ export class ShadowMantleClone extends Phaser.Physics.Arcade.Sprite {
             // Actualizar on-fire
             this._specialContimer++;
             const frame = Math.floor(this._specialContimer / 4) % 2;
-            this._onFireSprite.setPosition(this.x - 16, this.y - 32);
+            this._onFireSprite.setPosition(this.x, this.y - 12);
             this._onFireSprite.setTexture(`mantle_imonfire_${frame}`);
 
             // Destruir si sale del mapa

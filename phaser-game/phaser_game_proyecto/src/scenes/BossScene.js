@@ -87,11 +87,6 @@ export default class BossScene extends Phaser.Scene {
             this.load.image(`mantle_cloud_projectile_${i}`,
                 `/src/assets/sprites/spr_boss/spr_shadow_mantle_cloud_projectile/spr_shadow_mantle_cloud_projectile_${i}.png`);
 
-        // ── Fire2 (proyectil diagonal) ────────────────────────
-        for (let i = 0; i < 3; i++)
-            this.load.image(`mantle_fire2_${i}`,
-                `/src/assets/sprites/spr_boss/spr_shadow_mantle_fire2/spr_shadow_mantle_fire2_${i}.png`);
-
         // ── Enemy sprites (obj___) ────────────────────────────
         for (let i = 0; i < 6; i++)
             this.load.image(`enemy_appear_${i}`, `/src/assets/sprites/spr_monster/spr_monster_0.png`);
@@ -167,6 +162,10 @@ export default class BossScene extends Phaser.Scene {
         this.bossEnemies   = this.physics.add.group();
         this.fireControllers = []; // no son sprites
 
+        // ── On-fire visual (se crea ANTES del boss para quedar detrás) ──
+        this._onFireImg = this.add.image(0, 0, 'mantle_imonfire_0')
+            .setScale(2).setTint(0xff0000).setVisible(false);
+
         // ── Boss ─────────────────────────────────────────────
         this.boss = new ShadowMantle(this, 216, 80);
 
@@ -194,13 +193,9 @@ export default class BossScene extends Phaser.Scene {
         // ── Colisiones ────────────────────────────────────────
         this._crearColisiones();
 
-        // ── On-fire visual ────────────────────────────────────
-        this._onFireImg = this.add.image(0, 0, 'mantle_imonfire_0')
-            .setScale(2).setTint(0xff0000).setVisible(false).setDepth(100);
-
         this.events.on('boss-onfire', ({ active, x, y }) => {
             this._onFireImg.setVisible(active);
-            if (active) this._onFireImg.setPosition(x - 16, y - 32);
+            if (active) this._onFireImg.setPosition(x, y - 16);
         });
 
         this.events.on('boss-defeated', () => this._bossDefeated());
@@ -291,14 +286,8 @@ export default class BossScene extends Phaser.Scene {
                 this.hitSound.play();
                 // Retroceso alejándose del proyectil
                 const angle = Phaser.Math.Angle.Between(bullet.x, bullet.y, player.x, player.y);
-                const pushDistance = 60;
-                this.tweens.add({
-                    targets: player,
-                    x: player.x + Math.cos(angle) * pushDistance,
-                    y: player.y + Math.sin(angle) * pushDistance,
-                    duration: 150,
-                    ease: 'Power1'
-                });
+                player.setVelocity(Math.cos(angle) * 300, Math.sin(angle) * 300);
+                this.time.delayedCall(150, () => { if (!player.isDead) player.setVelocity(0); });
             }
             if (bullet.destroyonhit ?? true) bullet.destroy();
         });
@@ -312,14 +301,8 @@ export default class BossScene extends Phaser.Scene {
                 this.hitSound.play();
                 // Retroceso alejándose del boss
                 const angle = Phaser.Math.Angle.Between(boss.x, boss.y, player.x, player.y);
-                const pushDistance = 60;
-                this.tweens.add({
-                    targets: player,
-                    x: player.x + Math.cos(angle) * pushDistance,
-                    y: player.y + Math.sin(angle) * pushDistance,
-                    duration: 150,
-                    ease: 'Power1'
-                });
+                player.setVelocity(Math.cos(angle) * 300, Math.sin(angle) * 300);
+                this.time.delayedCall(150, () => { if (!player.isDead) player.setVelocity(0); });
             }
         });
 
@@ -333,14 +316,8 @@ export default class BossScene extends Phaser.Scene {
                 this.hitSound.play();
                 // Retroceso alejándose del enemigo
                 const angle = Phaser.Math.Angle.Between(enemy.x, enemy.y, player.x, player.y);
-                const pushDistance = 60;
-                this.tweens.add({
-                    targets: player,
-                    x: player.x + Math.cos(angle) * pushDistance,
-                    y: player.y + Math.sin(angle) * pushDistance,
-                    duration: 150,
-                    ease: 'Power1'
-                });
+                player.setVelocity(Math.cos(angle) * 300, Math.sin(angle) * 300);
+                this.time.delayedCall(150, () => { if (!player.isDead) player.setVelocity(0); });
             }
         });
 
