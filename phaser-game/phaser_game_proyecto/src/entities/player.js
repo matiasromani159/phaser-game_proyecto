@@ -18,7 +18,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         this.speed = 150;
         this.lastDir = 'down';
         this.setCollideWorldBounds(true);
-        this.setScale(2);
+        this.setScale(2.25);
 
         // Invencibilidad
         this.isInvincible = false;

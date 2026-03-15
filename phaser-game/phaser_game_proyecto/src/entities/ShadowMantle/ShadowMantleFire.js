@@ -21,26 +21,25 @@ export class ShadowMantleFire extends Phaser.Physics.Arcade.Sprite {
         this.body.allowGravity = false;
         this.setScale(1.5);
 
-        this._rotatorTarget = rotatorTarget; // referencia al boss (ShadowMantle)
+        this._rotatorTarget = rotatorTarget;
         this._type          = type;
-        this._place         = 0;      // ángulo en grados
-        this._placeSpeed    = 2;      // velocidad de rotación
-        this._len           = (type === 0 || type === 1) ? 24 : 40; // tipos 0/1 empiezan con radio visible para que se vea el giro
-        this._lenSpeed      = 0;      // cambio de radio por frame
-        this._con           = 0;      // flag para tipos 2/3/4/5
+        this._place         = 0;
+        this._placeSpeed    = 2;
+        this._len           = (type === 0 || type === 1) ? 24 : 40;
+        this._lenSpeed      = 0;
+        this._con           = 0;
         this._timer         = 0;
         this._alphaTimer    = 0;
         this.activeHitbox   = false;
         this.damage         = 2;
+        this.destroyonhit   = false; // No se destruye al tocar al jugador
+        this._hitCooldown   = 0;     // Frames de invencibilidad tras golpear
         this.isDead         = false;
 
-        // Tipo 3 vive más tiempo
         this._maxAlphaTimer = (type === 3) ? 190 : 50;
 
-        // Ocultar hasta que actualizar() lo posicione correctamente
         this.setAlpha(0);
 
-        // snd_board_torch al crear la llama orbital
         scene.sound.stopByKey('snd_board_torch');
         scene.sound.play('snd_board_torch');
     }
@@ -48,34 +47,34 @@ export class ShadowMantleFire extends Phaser.Physics.Arcade.Sprite {
     actualizar(delta) {
         if (this.isDead) return;
 
-        // Throttle a 30fps igual que boss y FireController
         this._deltaAccum = (this._deltaAccum ?? 0) + delta;
         if (this._deltaAccum < 33.333) return;
         this._deltaAccum -= 33.333;
 
-        // Seguir al target (boss)
         if (!this._rotatorTarget || this._rotatorTarget.isDead) {
             this._destroy(); return;
         }
 
-        // Actualizar posición orbital a 30fps (igual que boss y FireController)
         const tx = this._rotatorTarget.x;
         const ty = this._rotatorTarget.y;
         this.x = tx + Math.cos(Phaser.Math.DegToRad(this._place)) * this._len;
         this.y = ty + Math.sin(Phaser.Math.DegToRad(this._place)) * this._len;
-        this.setAlpha(1); // ya está posicionado, hacerlo visible
+        this.setAlpha(1);
         this._place += this._placeSpeed;
         this._len   += this._lenSpeed;
 
-        // Lógica por tipo
+        // Bajar cooldown de hit
+        if (this._hitCooldown > 0) {
+            this._hitCooldown--;
+            if (this._hitCooldown === 0) this.activeHitbox = true;
+        }
+
         this._updateByType();
 
-        // Animar sprite
         this._alphaTimer++;
         const frame = Math.floor((this._alphaTimer * 0.25) % 3);
         this.setTexture(`mantle_fire_${frame}`);
 
-        // Destruir por tiempo
         if (this._alphaTimer >= this._maxAlphaTimer) {
             this._destroy();
         }
@@ -147,9 +146,14 @@ export class ShadowMantleFire extends Phaser.Physics.Arcade.Sprite {
         }
     }
 
-    // Llamado desde FireController para activar la fase de disparo
     activate() {
         this._con = 1;
+    }
+
+    onHit() {
+        // No destruir — pausar hitbox 20 frames
+        this._hitCooldown = 20;
+        this.activeHitbox = false;
     }
 
     _destroy() {

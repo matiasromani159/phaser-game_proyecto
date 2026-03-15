@@ -13,7 +13,8 @@ export class ShadowMantleBomb extends Phaser.Physics.Arcade.Sprite {
         scene.physics.add.existing(this);
 
         this.body.allowGravity = false;
-        this.setScale(1.5);
+        this.body.enable = false; // Sin hitbox durante todo el ciclo de vida de la bomba
+        this.setScale(2.25);
 
         this._startx   = x;
         this._starty   = y;
@@ -24,7 +25,9 @@ export class ShadowMantleBomb extends Phaser.Physics.Arcade.Sprite {
         this._fakey    = -15;
         this._savedDepth = this.depth;
 
-        this.isDead = false;
+        this.isDead      = false;
+        this.destroyonhit= false; // La bomba no se destruye al tocar al jugador
+        this.activeHitbox= false; // La bomba no hace daño, solo la explosión
 
         // Shadow visual
         this._shadow = scene.add.image(x, y, 'mantle_bomb_shadow');
@@ -113,7 +116,8 @@ export class ShadowMantleCloud extends Phaser.Physics.Arcade.Sprite {
         scene.physics.add.existing(this);
 
         this.body.allowGravity = false;
-        this.setScale(1.5);
+        this.body.enable = false; // La nube es solo visual, el daño lo hacen los bullets
+        this.setScale(2.25);
 
         this._con        = 1;
         this._imageIndex = 0;
@@ -180,7 +184,7 @@ export class ShadowMantleCloudBullet extends Phaser.Physics.Arcade.Sprite {
         scene.physics.add.existing(this);
 
         this.body.allowGravity = false;
-        this.setScale(1.5);
+        this.setScale(2.25);
 
         this._timer      = 0;
         this._imageIndex = 0;
@@ -188,6 +192,7 @@ export class ShadowMantleCloudBullet extends Phaser.Physics.Arcade.Sprite {
         this.damage      = 2;
         this.destroyonhit= false;
         this.activeHitbox= true;
+        this._hitCooldown= 0; // frames de invencibilidad tras golpear
 
         // Trail — últimas 5 posiciones (remx/remy del GML)
         this._remx = Array(5).fill(x);
@@ -208,6 +213,12 @@ export class ShadowMantleCloudBullet extends Phaser.Physics.Arcade.Sprite {
 
         this._timer++;
 
+        // Invencibilidad tras golpear — desactiva hitbox 20 frames
+        if (this._hitCooldown > 0) {
+            this._hitCooldown--;
+            this.activeHitbox = this._hitCooldown === 0;
+        }
+
         // Animar (image_speed = 0.25 en GML)
         this._imageIndex = (this._imageIndex + 0.125) % 2;
         this.setTexture(`mantle_cloud_projectile_${Math.floor(this._imageIndex)}`);
@@ -227,6 +238,12 @@ export class ShadowMantleCloudBullet extends Phaser.Physics.Arcade.Sprite {
         }
 
         if (this._timer >= 60) this._destroy();
+    }
+
+    onHit() {
+        // Llamado desde BossScene — no destruye, solo pausa el hitbox 20 frames
+        this._hitCooldown = 20;
+        this.activeHitbox = false;
     }
 
     _destroy() {

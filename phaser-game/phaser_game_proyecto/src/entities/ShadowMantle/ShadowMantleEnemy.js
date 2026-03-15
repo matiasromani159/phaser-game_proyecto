@@ -14,9 +14,13 @@ export class ShadowMantleEnemy extends Phaser.Physics.Arcade.Sprite {
         scene.physics.add.existing(this);
 
         this.body.allowGravity = false;
-        this.setScale(2);
+        this.setScale(0.1); // 360px * 0.1 = 36px
+        // Reducir hitbox de física para que no se meta en las paredes
+        this.body.setSize(12, 12);
+        this.body.setOffset(2, 2);
+        this.setOrigin(0, 0); // origen top-left para alinearse al grid de tiles
 
-        this.CELL_SIZE   = 32;
+        this.CELL_SIZE   = 36; // alineado al tamaño real del tile del mapa
         this.isDead      = false;
         this.damage      = 2;
         this.activeHitbox= false;
@@ -35,8 +39,12 @@ export class ShadowMantleEnemy extends Phaser.Physics.Arcade.Sprite {
         this._spd         = 2.5;
         this._imageIndex  = 0;
 
+        // La posición viene del spawner ya alineada al grid (col*36+2, row*36+2)
         this._xprev2 = x;
         this._yprev2 = y;
+        // Celda objetivo actual
+        this._targetCellX = x;
+        this._targetCellY = y;
 
         this.DIRS = [
             { x:  1, y:  0 }, // 0 der
@@ -58,7 +66,6 @@ export class ShadowMantleEnemy extends Phaser.Physics.Arcade.Sprite {
         // hurttimer
         if (this._hurttimer > 0) {
             this._hurttimer--;
-            // Retroceder en dirección de golpe
             if (this._hurttimer > 6) {
                 const pushDir = this._hitdir;
                 const dx = [0,1,0,-1][pushDir] ?? 0;
@@ -92,7 +99,6 @@ export class ShadowMantleEnemy extends Phaser.Physics.Arcade.Sprite {
         if (this._state === 'move') {
             this._alivetimer++;
 
-            // Comprobar si está atascado
             if (this._hit === 0) {
                 if (this.x === this._xprevious && this._xprevious === this._xprev2 &&
                     this.y === this._yprevious && this._yprevious === this._yprev2)
@@ -101,8 +107,9 @@ export class ShadowMantleEnemy extends Phaser.Physics.Arcade.Sprite {
                 this._yprev2 = this._yprevious;
             }
 
-            // Tiempo de vida agotado o no puede encontrar camino
-            if ((this._alivetimer >= 300 || this._cantFindPath) && this._state !== 'disappear')
+            // Solo desaparecen al ser golpeados por el jugador, no por tiempo
+            // (cantFindPath sigue activo para evitar enemigos completamente atascados)
+            if (this._cantFindPath && this._state !== 'disappear')
                 this._enterDisappear();
 
             this._xprevious = this.x;
@@ -110,19 +117,26 @@ export class ShadowMantleEnemy extends Phaser.Physics.Arcade.Sprite {
 
             if (this._movecon === 0) {
                 if (this._moveType === 0) {
-                    // Movimiento aleatorio celda a celda
+                    // Movimiento aleatorio — elegir dirección libre
                     this._movedir = Phaser.Math.Between(0, 3);
                     for (let i = 0; i < 4; i++) {
                         const off = this.DIRS[this._movedir];
-                        if (this._wouldCollide(this.x + off.x * this.CELL_SIZE, this.y + off.y * this.CELL_SIZE))
-                            this._movedir = (this._movedir + 1) % 4;
-                        else break;
+                        const nx  = this.x + off.x * this.CELL_SIZE;
+                        const ny  = this.y + off.y * this.CELL_SIZE;
+                        if (!this._wouldCollide(nx, ny)) break;
+                        this._movedir = (this._movedir + 1) % 4;
                     }
+                    // Snapear al grid antes de calcular destino
+                    const sx0 = Math.round(this.x / this.CELL_SIZE) * this.CELL_SIZE;
+                    const sy0 = Math.round(this.y / this.CELL_SIZE) * this.CELL_SIZE;
+                    const off = this.DIRS[this._movedir];
+                    this._targetCellX = sx0 + off.x * this.CELL_SIZE;
+                    this._targetCellY = sy0 + off.y * this.CELL_SIZE;
                     this._movecon = 1;
                 }
 
                 if (this._moveType === 1) {
-                    // Persecución simple: elegir la dirección que más se acerca al jugador
+                    // Persecución — elegir la dirección que más acerca al jugador
                     const player = this.scene.player;
                     const dx     = player.x - this.x;
                     const dy     = player.y - this.y;
@@ -134,56 +148,47 @@ export class ShadowMantleEnemy extends Phaser.Physics.Arcade.Sprite {
                     // Si esa dirección choca, intentar las otras
                     for (let i = 0; i < 4; i++) {
                         const off = this.DIRS[this._movedir];
-                        if (this._wouldCollide(this.x + off.x * this.CELL_SIZE, this.y + off.y * this.CELL_SIZE))
-                            this._movedir = (this._movedir + 1) % 4;
-                        else break;
+                        const nx  = this.x + off.x * this.CELL_SIZE;
+                        const ny  = this.y + off.y * this.CELL_SIZE;
+                        if (!this._wouldCollide(nx, ny)) break;
+                        this._movedir = (this._movedir + 1) % 4;
                     }
+                    // Snapear al grid antes de calcular destino
+                    const sx1 = Math.round(this.x / this.CELL_SIZE) * this.CELL_SIZE;
+                    const sy1 = Math.round(this.y / this.CELL_SIZE) * this.CELL_SIZE;
+                    const off1 = this.DIRS[this._movedir];
+                    this._targetCellX = sx1 + off1.x * this.CELL_SIZE;
+                    this._targetCellY = sy1 + off1.y * this.CELL_SIZE;
                     this._movecon = 1;
                 }
             }
 
             if (this._movecon === 1) {
                 this._movetimer++;
-                const dir  = this.DIRS[this._movedir];
-                let   stop = 0;
 
-               for (let i = 0; i < this._spd * 0.5; i++) {
-                    if (stop) break;
+                // Animar según dirección
+                const frameMap = [1, 2, 3, 0];
+                this._imageIndex = frameMap[this._movedir];
+                this.setTexture(`enemy_walk_${this._imageIndex}`);
 
-                    this.x += dir.x;
-                    this.y += dir.y;
+                // Mover suavemente hacia la celda objetivo
+                const spd = this._spd * 0.8;
+                const dx  = this._targetCellX - this.x;
+                const dy  = this._targetCellY - this.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
 
-                    // Actualizar frame de animación según dirección
-                    const frameMap = [1, 2, 3, 0]; // der, arr, izq, abj
-                    this._imageIndex = frameMap[this._movedir];
-                    this.setTexture(`enemy_walk_${this._imageIndex}`);
+                if (dist <= spd) {
+                    // Llegó a la celda — snapear exacto y elegir siguiente
+                    this.x = this._targetCellX;
+                    this.y = this._targetCellY;
+                    this._movecon   = 0;
+                    this._movetimer = 0;
 
-                    if (this._wouldCollide(this.x, this.y)) {
-                        this.x -= dir.x;
-                        this.y -= dir.y;
-                        this._movecon   = 0;
-                        this._movetimer = 0;
-                        stop = 1;
-                        break;
-                    }
-
-                    const completaCelda =
-                        ((this._movedir === 0 || this._movedir === 2) && (Math.round(this.x) % this.CELL_SIZE) === 0) ||
-                        ((this._movedir === 1 || this._movedir === 3) && (Math.round(this.y) % this.CELL_SIZE) === 0);
-
-                    if (completaCelda) {
-                        this._movecon   = 0;
-                        this._movetimer = 0;
-                        stop = 1;
-
-                        // Cambiar a move_type 1 si el boss está en dash
-                        const boss = this.scene.boss;
-                        if (boss && boss.dashcon === 0 && boss.hp >= 5) {
-                            // move_type 0, no cambiar
-                        } else if (boss && boss.hp < 5) {
-                            this._moveType = 1;
-                        }
-                    }
+                    const boss = this.scene.boss;
+                    if (boss && boss.hp < 5) this._moveType = 1;
+                } else {
+                    this.x += (dx / dist) * spd;
+                    this.y += (dy / dist) * spd;
                 }
             }
         }
@@ -209,7 +214,6 @@ export class ShadowMantleEnemy extends Phaser.Physics.Arcade.Sprite {
         this._hitdir      = hitdir;
         this._hit         = 1;
 
-        // Tras recibir golpe → disappear
         this._alivetimer = 600;
         this._enterDisappear();
     }
@@ -224,7 +228,16 @@ export class ShadowMantleEnemy extends Phaser.Physics.Arcade.Sprite {
 
     _wouldCollide(nx, ny) {
         if (!this.scene.wallsLayer) return false;
-        const tile = this.scene.wallsLayer.getTileAtWorldXY(nx, ny);
-        return tile && tile.collides;
+        const TILE = this.CELL_SIZE;
+        // Convertir posición mundo a celda del tilemap
+        const col = Math.floor(nx / TILE);
+        const row = Math.floor(ny / TILE);
+        const layer = this.scene.wallsLayer.layer;
+        // Fuera del mapa = colisión
+        if (row < 0 || row >= layer.data.length) return true;
+        if (col < 0 || col >= layer.data[0].length) return true;
+        // index <= 0 = libre, cualquier otro = pared
+        const tile = layer.data[row][col];
+        return tile && tile.index > 0;
     }
 }

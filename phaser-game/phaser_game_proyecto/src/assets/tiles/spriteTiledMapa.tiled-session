@@ -6,6 +6,7 @@
     "activeFile": "tipe.tsx",
     "expandedProjectPaths": [
     ],
+    "file.lastUsedOpenFilter": "Todos los archivos (*)",
     "fileStates": {
         "": {
             "scaleInDock": 1,
@@ -44,6 +45,7 @@
         "MapaEscena.tmx"
     ],
     "project": "",
+    "property.type": "bool",
     "recentFiles": [
         "tipe.tsx",
         "MapaEscena.tmx"

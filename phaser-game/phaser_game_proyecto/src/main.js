@@ -10,8 +10,10 @@ import BossScene from './scenes/BossScene.js';
 //Una prueba para GIthuB
 const config = {
     type: Phaser.AUTO,
+    
     width: 432,
     height: 324,
+     zoom: 2, 
     //    scene: [AuthScene, LoginScene, GameScene, GameOverScene],
     scene: [Room1, Room2, BossScene, GameOverScene, SaveScene],
     physics: {
@@ -23,4 +25,7 @@ const config = {
 };
 
 
-new Phaser.Game(config);
+// al final del archivo, reemplaza la última línea
+window.game = new Phaser.Game(config);
+// main.js — añade esta línea
+

@@ -27,20 +27,17 @@ export class ShadowMantleFire3 extends Phaser.Physics.Arcade.Sprite {
         this.activeHitbox = false;
         this._activetimer = opts.activetimer ?? 20;
         this.damage       = 1;
+        this.destroyonhit = false; // No se destruye al tocar al jugador
+        this._hitCooldown = 0;     // Frames de invencibilidad tras golpear
         this.isDead       = false;
 
         this._dirRad  = Phaser.Math.DegToRad(dir);
-        // GML tipo 6/7: gravity_direction = direction + 180 (frena)
-        // GML tipo 8:   gravity_direction = direction       (acelera hacia afuera)
-        // En nuestro código _type=1 corresponde al tipo 8 del GML
         this._gravRad = this._type === 1
             ? Phaser.Math.DegToRad(dir)
             : Phaser.Math.DegToRad(dir + 180);
     }
 
     init() {
-        // GML: speed px/frame a 30fps → px/s en Phaser = speed * 30
-        // Pero ahora a 60fps usamos * 15 (30/2) para que visualmente sea igual
         if (this._speed !== 0) {
             this.body.setVelocity(
                 Math.cos(this._dirRad) * this._speed * 15,
@@ -54,6 +51,12 @@ export class ShadowMantleFire3 extends Phaser.Physics.Arcade.Sprite {
 
         this._timer++;
 
+        // Bajar cooldown de hit
+        if (this._hitCooldown > 0) {
+            this._hitCooldown--;
+            if (this._hitCooldown === 0) this.activeHitbox = true;
+        }
+
         // Tipo 0: parpadea hasta activetimer, luego activa hitbox
         if (this._type === 0) {
             if (this._timer <= this._activetimer) {
@@ -65,23 +68,27 @@ export class ShadowMantleFire3 extends Phaser.Physics.Arcade.Sprite {
             }
         }
 
-        // Tipo 1 (espiral fase 4): hitbox activa desde el primer frame
+        // Tipo 1: hitbox activa desde el primer frame
         if (this._type === 1 && this._timer === 1) {
             this.activeHitbox = true;
         }
 
-        // Gravedad: GML aplica gravity px/frame a 30fps → /2 para 60fps
-        // velocity en px/s → gravity * 30 / 2 = gravity * 15
         this.body.velocity.x += Math.cos(this._gravRad) * this._gravity * 15;
         this.body.velocity.y += Math.sin(this._gravRad) * this._gravity * 15;
 
         const frame = Math.floor((this._timer * 0.125) % 3);
         this.setTexture(`mantle_fire_${frame}`);
 
-        if (this._timer >= 200) {  // 100*2
+        if (this._timer >= 200) {
             this.isDead = true;
             this.destroy();
         }
+    }
+
+    onHit() {
+        // No destruir — pausar hitbox 20 frames
+        this._hitCooldown = 20;
+        this.activeHitbox = false;
     }
 }
 
@@ -97,14 +104,15 @@ export class ShadowMantleGroundfire extends Phaser.Physics.Arcade.Sprite {
         scene.add.existing(this);
 
         this.body.allowGravity = false;
-        this.setScale(0.5); // empieza pequeño y crece hasta 2
+        this.setScale(0.5);
 
         this._timer       = 0;
         this.activeHitbox = true;
         this.damage       = 2;
+        this.destroyonhit = false; // No se destruye al tocar al jugador
+        this._hitCooldown = 0;
         this.isDead       = false;
 
-        // Auto-registrarse en bossBullets para que BossScene llame actualizar()
         if (scene.bossBullets) scene.bossBullets.add(this, true);
     }
 
@@ -113,18 +121,27 @@ export class ShadowMantleGroundfire extends Phaser.Physics.Arcade.Sprite {
 
         this._timer++;
 
-        if (this._timer === 40)  this.activeHitbox = false;   // 20*2
-        if (this._timer === 60)  { this.isDead = true; this.destroy(); }  // 30*2
+        // Bajar cooldown de hit
+        if (this._hitCooldown > 0) {
+            this._hitCooldown--;
+            if (this._hitCooldown === 0) this.activeHitbox = true;
+        }
 
-        // Crecer desde pequeño hasta escala 2
+        if (this._timer === 40)  this.activeHitbox = false;
+        if (this._timer === 60)  { this.isDead = true; this.destroy(); }
+
         if (this.scaleX < 2) {
-            this.setScale(Math.min(this.scaleX + 0.1, 2));  // 0.2/2
+            this.setScale(Math.min(this.scaleX + 0.1, 2));
         }
 
-        // Desvanecer al final
         if (this._timer > 40) {
-            this.setAlpha(1 - ((this._timer - 40) / 20));  // 20*2, 10*2
+            this.setAlpha(1 - ((this._timer - 40) / 20));
         }
+    }
+
+    onHit() {
+        this._hitCooldown = 20;
+        this.activeHitbox = false;
     }
 }
 
@@ -134,7 +151,6 @@ export class ShadowMantleGroundfire extends Phaser.Physics.Arcade.Sprite {
 export class ShadowMantleClone extends Phaser.Physics.Arcade.Sprite {
 
     constructor(scene, x, y) {
-        // Aura ANTES del sprite para que quede detrás
         const onFireSprite = scene.add.image(x, y, 'mantle_imonfire_0');
         onFireSprite.setScale(2).setTint(0xff0000);
 
@@ -152,6 +168,8 @@ export class ShadowMantleClone extends Phaser.Physics.Arcade.Sprite {
         this._dashcon         = 1;
         this.isDead           = false;
         this.damage           = 2;
+        this.destroyonhit     = false; // No se destruye al tocar al jugador
+        this._hitCooldown     = 0;
 
         this._onFireSprite = onFireSprite;
     }
@@ -159,13 +177,17 @@ export class ShadowMantleClone extends Phaser.Physics.Arcade.Sprite {
     actualizar(delta) {
         if (this.isDead) return;
 
-        // Throttle a 30fps igual que ShadowMantle principal
         this._deltaAccum = (this._deltaAccum ?? 0) + delta;
         if (this._deltaAccum < 25) return;
         this._deltaAccum -= 25;
 
         const bounds  = this.scene.physics.world.bounds;
         const losses  = this.scene.registry.get('shadow_mantle_losses') ?? 0;
+
+        // Bajar cooldown de hit
+        if (this._hitCooldown > 0) {
+            this._hitCooldown--;
+        }
 
         if (this._dashcon === 1) {
             const targetX = 170 + Phaser.Math.Between(0, 295);
@@ -190,18 +212,15 @@ export class ShadowMantleClone extends Phaser.Physics.Arcade.Sprite {
                 new ShadowMantleGroundfire(this.scene, this.x, this.y);
             }
 
-            // Aplicar movimiento
             this._dashSpeed += this._dashGravity * (delta / 16.667);
             this.x += Math.cos(this._dashDir) * this._dashSpeed;
             this.y += Math.sin(this._dashDir) * this._dashSpeed;
 
-            // Actualizar on-fire
             this._specialContimer++;
             const frame = Math.floor(this._specialContimer / 4) % 2;
             this._onFireSprite.setPosition(this.x, this.y - 12);
             this._onFireSprite.setTexture(`mantle_imonfire_${frame}`);
 
-            // Destruir si sale del mapa
             if (
                 this.y > bounds.bottom ||
                 this.y < bounds.y - 100 ||
@@ -211,6 +230,10 @@ export class ShadowMantleClone extends Phaser.Physics.Arcade.Sprite {
                 this._destroy();
             }
         }
+    }
+
+    onHit() {
+        this._hitCooldown = 20;
     }
 
     _destroy() {
@@ -241,46 +264,50 @@ export class ShadowMantleEnemySpawn {
 
     _run() {
         const scene   = this.scene;
-        const bounds  = scene.physics.world.bounds;
         const player  = scene.player;
-        const losses  = scene.registry.get('shadow_mantle_losses') ?? 0;
+        const TILE    = 36;
 
-        // Generar posiciones candidatas (equivale a obj_spawn_pos en GML)
-        const candidates = [];
-        for (let ix = 0; ix < 10; ix++) {
-            for (let iy = 0; iy < 6; iy++) {
-                const cx = 175 + ix * 32;
-                const cy = 109 + iy * 32;
-
-                // Filtrar si muy cerca del jugador
-                const distToPlayer = Phaser.Math.Distance.Between(cx, cy, player.x, player.y);
-                if (distToPlayer < 50) continue;
-
-                // Filtrar si boss en fase 4 y demasiado cerca del jugador
-                if (this._boss.hp < 5 && distToPlayer < 100) continue;
-
-                candidates.push({ x: cx, y: cy });
+        // Leer celdas libres directamente del tilemap en runtime
+        // En la capa walls: índice -1 o 0 = libre, cualquier otro = pared
+        const FREE_CELLS = [];
+        if (scene.wallsLayer) {
+            const layer = scene.wallsLayer.layer;
+            for (let row = 2; row <= 7; row++) {
+                for (let col = 1; col <= 10; col++) {
+                    const tile = layer.data[row][col];
+                    // tile.index -1 = vacío, 0 = libre en Tiled (valor 0 en JSON)
+                    if (tile && tile.index <= 0) {
+                        FREE_CELLS.push({
+                            x: col * TILE,
+                            y: row * TILE,
+                        });
+                    }
+                }
             }
         }
 
+        const candidates = FREE_CELLS.filter(c => {
+            const distToPlayer = Phaser.Math.Distance.Between(c.x, c.y, player.x, player.y);
+            if (distToPlayer < 50) return false;
+            if (this._boss.hp < 5 && distToPlayer < 100) return false;
+            return true;
+        });
+
         if (candidates.length === 0) return;
 
-        // Elegir posición aleatoria
         const pos = candidates[Phaser.Math.Between(0, candidates.length - 1)];
 
-        // Mover el boss hacia el enemigo spawneado
+        // El boss se mueve exactamente donde spawnea el enemy (misma pos top-left)
         this._boss.targetx = pos.x;
-        this._boss.targety = pos.y - 32;
+        this._boss.targety = pos.y;
         this._boss.movestyle = 'to point and stop';
 
-        // Actualizar sprite del boss
         if (pos.x > this._boss.x)
             this._boss.play('mantle-side-r', true);
         else
             this._boss.play('mantle-side-l', true);
 
-        // Crear el enemigo
-        const enemy = new ShadowMantleEnemy(scene, pos.x - 11, pos.y - 10, this._moveType);
+        const enemy = new ShadowMantleEnemy(scene, pos.x, pos.y, this._moveType);
         scene.bossEnemies.add(enemy);
 
         this.isDead = true;

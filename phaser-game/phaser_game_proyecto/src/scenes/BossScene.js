@@ -74,7 +74,6 @@ export default class BossScene extends Phaser.Scene {
         });
 
         // ── Proyectiles (placeholders hasta tener sprites reales) ─
-        // Reutilizamos sprites existentes hasta tener los del boss
         this.load.image('mantle_bomb_0',          '/src/assets/sprites/spr_smallbullet.png');
         this.load.image('mantle_bomb_shadow',      '/src/assets/sprites/spr_smallbullet_outline.png');
         this.load.image('mantle_cloud_0',          '/src/assets/sprites/spr_smallbullet.png');
@@ -82,16 +81,16 @@ export default class BossScene extends Phaser.Scene {
         this.load.image('mantle_cloud_2',          '/src/assets/sprites/spr_smallbullet.png');
         this.load.image('mantle_cloud_3',          '/src/assets/sprites/spr_smallbullet.png');
         this.load.image('mantle_cloud_bullet_0',   '/src/assets/sprites/spr_smallbullet.png');
-        // Sprite real del proyectil cardinal
         for (let i = 0; i < 2; i++)
             this.load.image(`mantle_cloud_projectile_${i}`,
                 `/src/assets/sprites/spr_boss/spr_shadow_mantle_cloud_projectile/spr_shadow_mantle_cloud_projectile_${i}.png`);
 
-        // ── Enemy sprites (obj___) ────────────────────────────
-        for (let i = 0; i < 6; i++)
-            this.load.image(`enemy_appear_${i}`, `/src/assets/sprites/spr_monster/spr_monster_0.png`);
-        for (let i = 0; i < 4; i++)
-            this.load.image(`enemy_walk_${i}`,   `/src/assets/sprites/spr_monster/spr_monster_${i % 2}.png`);
+        // ── Enemy sprites ─────────────────────────────────────
+   this.load.image('enemy_appear_0', '/src/assets/sprites/spr_boss/gustavo.png');
+for (let i = 1; i < 6; i++)
+    this.load.image(`enemy_appear_${i}`, '/src/assets/sprites/spr_boss/gustavo.png');
+for (let i = 0; i < 4; i++)
+    this.load.image(`enemy_walk_${i}`, '/src/assets/sprites/spr_boss/gustavo.png');
 
         // ── Sonidos del boss ──────────────────────────────────
         this.load.audio('snd_board_bosshit',           '/src/assets/sounds/snd_boss/snd_board_bosshit.wav');
@@ -120,15 +119,14 @@ export default class BossScene extends Phaser.Scene {
         this.segundos   = data?.segundos ?? 0;
 
         // ── Mapa ─────────────────────────────────────────────
-        // Si no tienes boss_room.json aún, usa Suelomapa como placeholder
         try {
             this.map      = this.make.tilemap({ key: 'map_boss' });
             const tileset = this.map.addTilesetImage('tipe', 'tiles_boss');
             this.groundLayer = this.map.createLayer('ground', tileset, 0, 0);
             this.wallsLayer  = this.map.createLayer('walls',  tileset, 0, 0);
-            this.wallsLayer.setCollisionByProperty({ collides: true });
+            // Tile 369 no tiene collides=true en el tileset — excluimos solo los tiles vacíos (0)
+            this.wallsLayer.setCollisionByExclusion([0, -1]);
         } catch(e) {
-            // Sala sin mapa: fondo negro simple
             this.add.rectangle(0, 0, 432, 324, 0x111111).setOrigin(0);
             this.wallsLayer = null;
         }
@@ -144,7 +142,7 @@ export default class BossScene extends Phaser.Scene {
         this.cursors = this.input.keyboard.createCursorKeys();
         this.keyZ    = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
 
-        // ── Teclas de debug (quitar antes de producción) ──────
+        // ── Teclas de debug ───────────────────────────────────
         this.keyF1 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F1);
         this.keyF2 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F2);
         this.keyF3 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F3);
@@ -160,13 +158,13 @@ export default class BossScene extends Phaser.Scene {
         // ── Grupos ────────────────────────────────────────────
         this.bossBullets   = this.physics.add.group();
         this.bossEnemies   = this.physics.add.group();
-        this.fireControllers = []; // no son sprites
+        this.fireControllers = [];
 
-        // ── On-fire visual (se crea ANTES del boss para quedar detrás) ──
+        // ── On-fire visual ────────────────────────────────────
         this._onFireImg = this.add.image(0, 0, 'mantle_imonfire_0')
             .setScale(2).setTint(0xff0000).setVisible(false);
 
-        // ── Boss ─────────────────────────────────────────────
+        // ── Boss ──────────────────────────────────────────────
         this.boss = new ShadowMantle(this, 216, 80);
 
         // ── Sonidos ───────────────────────────────────────────
@@ -175,9 +173,7 @@ export default class BossScene extends Phaser.Scene {
         this.bossHitSound= this.sound.add('snd_board_bosshit', { volume: 0.8 });
 
         // ── Música ────────────────────────────────────────────
-        // Parar cualquier música que venga de la room anterior
         this.sound.getAll().forEach(s => { if (s.isPlaying) s.stop(); });
-
         this.music = this.sound.add('nightmare_boss', { loop: true, volume: 0.6 });
         this.music.play();
 
@@ -187,7 +183,7 @@ export default class BossScene extends Phaser.Scene {
             this.map?.heightInPixels ?? 324
         );
 
-        // ── HUD — barra de vida del boss ─────────────────────
+        // ── HUD ───────────────────────────────────────────────
         this._crearBossHUD();
 
         // ── Colisiones ────────────────────────────────────────
@@ -200,14 +196,11 @@ export default class BossScene extends Phaser.Scene {
 
         this.events.on('boss-defeated', () => this._bossDefeated());
         this.events.on('boss-phase-transition', () => {
-            // Opcional: flash de pantalla
             this.cameras.main.flash(500, 100, 0, 100);
         });
 
         this.cameras.main.fadeIn(500, 0, 0, 0);
 
-        // ── Path target para flamewave ────────────────────────
-        // El boss se mueve en círculo durante flamewave
         this._flamePathAngle = 0;
     }
 
@@ -219,7 +212,6 @@ export default class BossScene extends Phaser.Scene {
 
         this.player.update(this.cursors);
 
-        // ── Debug keys ────────────────────────────────────────
         const b = this.boss;
         if (Phaser.Input.Keyboard.JustDown(this.keyF1)) this._debugForcePhase(1);
         if (Phaser.Input.Keyboard.JustDown(this.keyF2)) this._debugForcePhase(2);
@@ -229,28 +221,22 @@ export default class BossScene extends Phaser.Scene {
             console.log(`[DEBUG] hp:${b.hp.toFixed(1)} phase:${b.phase} dashcon:${b.dashcon} burstwavecon:${b.burstwavecon} flamewavecon:${b.flamewavecon} spawnenemies:${b.spawnenemies} phasetransitioncon:${b.phasetransitioncon} attacktimer:${b.attacktimer} movestyle:${b.movestyle}`);
         }
 
-        // Ataque del jugador
         if (Phaser.Input.Keyboard.JustDown(this.keyZ)) {
             this.player.attack();
         }
 
-        // Boss
         this.boss.actualizar(delta);
 
-        // FireControllers (no son sprites, se actualizan manualmente)
         [...this.fireControllers].forEach(fc => fc.actualizar(delta));
 
-        // Proyectiles
         this.bossBullets.getChildren().forEach(b => {
             if (b.actualizar) b.actualizar(delta);
         });
 
-        // Enemigos spawneados
         this.bossEnemies.getChildren().forEach(e => {
             if (e.actualizar) e.actualizar(delta);
         });
 
-        // Path circular para flamewave
         if (this.boss.movestyle === 'path') {
             this._flamePathAngle += 0.5;
             const cx = this.physics.world.bounds.width  / 2;
@@ -261,7 +247,6 @@ export default class BossScene extends Phaser.Scene {
             );
         }
 
-        // Actualizar barra de vida del boss
         this._actualizarBossHUD();
     }
 
@@ -284,12 +269,17 @@ export default class BossScene extends Phaser.Scene {
                 player.takeDamage(bullet.damage ?? 2);
                 player.lastDamageTime = ahora;
                 this.hitSound.play();
-                // Retroceso alejándose del proyectil
                 const angle = Phaser.Math.Angle.Between(bullet.x, bullet.y, player.x, player.y);
                 player.setVelocity(Math.cos(angle) * 300, Math.sin(angle) * 300);
                 this.time.delayedCall(150, () => { if (!player.isDead) player.setVelocity(0); });
             }
-            if (bullet.destroyonhit ?? true) bullet.destroy();
+
+            // FIX: si destroyonhit=false, llamar onHit() en vez de destruir
+            if (bullet.destroyonhit ?? true) {
+                bullet.destroy();
+            } else if (bullet.onHit) {
+                bullet.onHit();
+            }
         });
 
         // Jugador ← contacto con boss
@@ -299,7 +289,6 @@ export default class BossScene extends Phaser.Scene {
                 player.takeDamage(2);
                 player.lastDamageTime = ahora;
                 this.hitSound.play();
-                // Retroceso alejándose del boss
                 const angle = Phaser.Math.Angle.Between(boss.x, boss.y, player.x, player.y);
                 player.setVelocity(Math.cos(angle) * 300, Math.sin(angle) * 300);
                 this.time.delayedCall(150, () => { if (!player.isDead) player.setVelocity(0); });
@@ -314,7 +303,6 @@ export default class BossScene extends Phaser.Scene {
                 player.takeDamage(enemy.damage ?? 2);
                 player.lastDamageTime = ahora;
                 this.hitSound.play();
-                // Retroceso alejándose del enemigo
                 const angle = Phaser.Math.Angle.Between(enemy.x, enemy.y, player.x, player.y);
                 player.setVelocity(Math.cos(angle) * 300, Math.sin(angle) * 300);
                 this.time.delayedCall(150, () => { if (!player.isDead) player.setVelocity(0); });
@@ -334,7 +322,6 @@ export default class BossScene extends Phaser.Scene {
             if (this.player.isAttacking && enemy.takeHit) {
                 enemy.takeHit(this._dirToIndex(this.player.lastDir));
                 this.bossHitSound.play();
-                // Contar hits durante enemy wave
                 this.boss.hitsduringenemies++;
             }
         });
@@ -388,7 +375,6 @@ export default class BossScene extends Phaser.Scene {
             this.anims.create({ key, frames: frames.map(f => ({ key: f })), frameRate: fps, repeat });
         };
 
-        // Jugador
         makeAnim('walk-down',  ['down0',  'down1']);
         makeAnim('walk-up',    ['up0',    'up1']);
         makeAnim('walk-left',  ['left0',  'left1']);
@@ -397,11 +383,10 @@ export default class BossScene extends Phaser.Scene {
             makeAnim(`attack-${d}`, [`${d}Attack0`, `${d}Attack1`, `${d}Attack2`], 10, 0)
         );
 
-        // Boss — fps fieles al GML (image_speed * 60)
         makeAnim('mantle-idle',
-            Array.from({length:6}, (_,i) => `mantle_idle_${i}`), 20);   // 1/3 * 60 = 20fps
+            Array.from({length:6}, (_,i) => `mantle_idle_${i}`), 20);
         makeAnim('mantle-dash',
-            ['mantle_dash_0', 'mantle_dash_1'], 30);                      // 0.5 * 60 = 30fps
+            ['mantle_dash_0', 'mantle_dash_1'], 30);
         makeAnim('mantle-onfire',
             ['mantle_onfire_0', 'mantle_onfire_1'], 30);
         makeAnim('mantle-release',
@@ -409,7 +394,7 @@ export default class BossScene extends Phaser.Scene {
         makeAnim('mantle-release-abbreviated',
             Array.from({length:5},  (_,i) => `mantle_release_abbreviated_${i}`), 30, 0);
         makeAnim('mantle-laugh',
-            ['mantle_laugh_0', 'mantle_laugh_1'], 6);                     // image_speed oscila
+            ['mantle_laugh_0', 'mantle_laugh_1'], 6);
         makeAnim('mantle-side-r',
             Array.from({length:3}, (_,i) => `mantle_side_r_${i}`), 20);
         makeAnim('mantle-side-l',
@@ -422,7 +407,6 @@ export default class BossScene extends Phaser.Scene {
     destroyFireControllers() {
         this.fireControllers.forEach(fc => {
             fc.isDead = true;
-            // Destruir las llamas que creó
             if (fc._fires) fc._fires.forEach(f => { if (!f.isDead) f.destroy(); });
         });
         this.fireControllers = [];
@@ -465,7 +449,6 @@ export default class BossScene extends Phaser.Scene {
     _debugForcePhase(phase) {
         const b = this.boss;
 
-        // Limpiar todo el estado activo
         b.burstwavecon = 0; b.burstwavetimer = 0;
         b.spawnenemies = 0; b.spawnenemiestimer = 0;
         b.dashcon      = 0; b.dashtimer = 0;
@@ -485,10 +468,9 @@ export default class BossScene extends Phaser.Scene {
         this.bossBullets.clear(true, true);
         this.bossEnemies.clear(true, true);
 
-        // Setear hp y phase para la fase pedida
         const hpMap = { 1: 28, 2: 18, 3: 9, 4: 3 };
         b.hp    = hpMap[phase];
-        b.phase = phase - 1; // -1 para que _chooseAttack detecte el cambio de fase
+        b.phase = phase - 1;
         b.attacktimer = 20;
         b._playAnim('mantle-idle');
 
