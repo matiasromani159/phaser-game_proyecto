@@ -73,23 +73,25 @@ export class ShadowMantleBomb extends Phaser.Physics.Arcade.Sprite {
             }
         }
 
-        if (this._con === 2) {
-            this._timer++;
+  // En ShadowMantleBomb.actualizar(), bloque con === 2:
+if (this._con === 2) {
+    this._timer++;
 
-            if (this._timer === 40) {
-                // Crear cloud y destruirse
-                const cloud = new ShadowMantleCloud(
-                    this.scene,
-                    (this.x - 16) + 4,
-                    this.y - 30
-                );
-                this.scene.bossBullets.add(cloud);
-                // snd_board_bomb al explotar
-                this.scene.sound.stopByKey('snd_board_bomb');
-                this.scene.sound.play('snd_board_bomb');
-                this._destroy();
-            }
-        }
+    if (this._timer === 40) {
+        const TILE  = 36;
+        const col   = Math.floor(this.x / TILE);
+        const row   = Math.floor(this.y / TILE);
+        const snapX = col * TILE + TILE / 2;
+        const snapY = row * TILE + TILE / 2;
+
+        const cloud = new ShadowMantleCloud(this.scene, snapX, snapY);
+        this.scene.bossBullets.add(cloud);
+
+        this.scene.sound.stopByKey('snd_board_bomb');
+        this.scene.sound.play('snd_board_bomb');
+        this._destroy();
+    }
+}
     }
 
     _destroy() {
@@ -150,26 +152,24 @@ export class ShadowMantleCloud extends Phaser.Physics.Arcade.Sprite {
         }
     }
 
-    _fireCardinal() {
-        const spd = 300; // GML speed=10 a 30fps = 300px/s en Phaser
-        const dirs = [
-            { angle: 180, vx: -spd, vy:    0 },
-            { angle:   0, vx:  spd, vy:    0 },
-            { angle:  90, vx:    0, vy:  spd },
-            { angle: 270, vx:    0, vy: -spd },
-        ];
+// En ShadowMantleCloud._fireCardinal():
+_fireCardinal() {
+    const spd  = 300;
+    const dirs = [
+        { angle: 180, vx: -spd, vy:    0 },
+        { angle:   0, vx:  spd, vy:    0 },
+        { angle:  90, vx:    0, vy:  spd },
+        { angle: 270, vx:    0, vy: -spd },
+    ];
 
-        for (const d of dirs) {
-            const b = new ShadowMantleCloudBullet(
-                this.scene, this.x + 16, this.y + 16
-            );
-            // PRIMERO añadir al grupo para que el body esté activo
-            this.scene.bossBullets.add(b);
-            // DESPUÉS setear velocidad y ángulo
-            b.setAngle(d.angle);
-            b.body.setVelocity(d.vx, d.vy);
-        }
+    for (const d of dirs) {
+        // Sin offset — sale exactamente desde el centro del tile
+        const b = new ShadowMantleCloudBullet(this.scene, this.x, this.y);
+        this.scene.bossBullets.add(b);
+        b.setAngle(d.angle);
+        b.body.setVelocity(d.vx, d.vy);
     }
+}
 }
 
 // ─────────────────────────────────────────────────────────────

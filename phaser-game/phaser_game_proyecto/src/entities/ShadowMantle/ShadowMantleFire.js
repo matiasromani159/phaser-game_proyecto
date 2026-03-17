@@ -19,7 +19,7 @@ export class ShadowMantleFire extends Phaser.Physics.Arcade.Sprite {
         scene.physics.add.existing(this);
 
         this.body.allowGravity = false;
-        this.setScale(1.5);
+        this.setScale(2);
 
         this._rotatorTarget = rotatorTarget;
         this._type          = type;

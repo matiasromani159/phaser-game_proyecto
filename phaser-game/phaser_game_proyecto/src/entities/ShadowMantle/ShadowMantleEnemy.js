@@ -46,6 +46,10 @@ export class ShadowMantleEnemy extends Phaser.Physics.Arcade.Sprite {
         this._targetCellX = x;
         this._targetCellY = y;
 
+        // Efecto surgir del suelo
+this._spawnTargetY = y;
+this.y = y + 36; // empieza un tile más abajo
+
         this.DIRS = [
             { x:  1, y:  0 }, // 0 der
             { x:  0, y: -1 }, // 1 arr
@@ -84,16 +88,27 @@ export class ShadowMantleEnemy extends Phaser.Physics.Arcade.Sprite {
         }
 
         // ── Estado init: animación de aparición ───────────────
-        if (this._state === 'init') {
-            this._imageIndex += 0.25;
-            if (this._imageIndex >= 5) {
-                this._imageIndex = 0;
-                this.setTexture('enemy_walk_0');
-                this._state       = 'move';
-                this.activeHitbox = true;
-            }
-            return;
-        }
+ if (this._state === 'init') {
+    const progress = Math.min(this._imageIndex / 5, 1); // 0 → 1
+    const totalH   = this.height;
+    this._cropH    = Math.floor(progress * totalH);
+
+    // Crop de abajo hacia arriba — revela el sprite gradualmente
+    this.setCrop(0, totalH - this._cropH, this.width, this._cropH);
+
+    this._imageIndex += 0.25;
+    const frame = Math.floor(this._imageIndex);
+    this.setTexture(`enemy_appear_${Math.min(frame, 4)}`);
+
+    if (this._imageIndex >= 5) {
+        this.setCrop(); // quitar crop — sprite completo
+        this._imageIndex = 0;
+        this.setTexture('enemy_walk_0');
+        this._state       = 'move';
+        this.activeHitbox = true;
+    }
+    return;
+}
 
         // ── Estado move ───────────────────────────────────────
         if (this._state === 'move') {
