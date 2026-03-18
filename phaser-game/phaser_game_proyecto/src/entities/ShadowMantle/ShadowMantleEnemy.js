@@ -4,6 +4,11 @@
  *
  * move_type 0 → movimiento celda a celda aleatorio
  * move_type 1 → persecución simple hacia el jugador (navmesh simplificado)
+ *
+ * Animaciones ajustadas a 60fps (GML corría a 30fps, todos los incrementos x0.5):
+ *   GML: image_index += 0.25 por frame a 30fps
+ *   Aquí: _imageIndex  += 0.125 por frame a 60fps
+ *   → misma duración real: 5 / 0.25 = 20 frames GML = 40 frames Phaser
  */
 export class ShadowMantleEnemy extends Phaser.Physics.Arcade.Sprite {
 
@@ -14,35 +19,35 @@ export class ShadowMantleEnemy extends Phaser.Physics.Arcade.Sprite {
         scene.physics.add.existing(this);
 
         this.body.allowGravity = false;
-        this.setScale(0.1); // 360px * 0.1 = 36px
-        // Reducir hitbox de física para que no se meta en las paredes
+        this.setScale(0.1);
         this.body.setSize(36, 36);
-this.body.setOffset(0, 0);
-        this.setOrigin(0, 0); // origen top-left para alinearse al grid de tiles
+        this.body.setOffset(0, 0);
+        this.setOrigin(0, 0);
 
-        this.CELL_SIZE   = 36; // alineado al tamaño real del tile del mapa
-        this.isDead      = false;
-        this.damage      = 2;
-        this.activeHitbox= false;
+        this.CELL_SIZE    = 36;
+        this.isDead       = false;
+        this.damage       = 2;
+        this.activeHitbox = false;
 
-        this._state       = 'init';
-        this._moveType    = moveType;
-        this._movecon     = 0;
-        this._movetimer   = 0;
-        this._movedir     = 1; // 0=der 1=arr 2=izq 3=abj
-        this._alivetimer  = 0;
-        this._hurttimer   = 0;
-        this._hit         = 0;
-        this._hitdir      = -1;
-        this._cantFindPath= false;
-        this._spdtimer    = 0;
-        this._spd         = 2.5;
-        this._imageIndex  = 0;
+        this._state        = 'init';
+        this._moveType     = moveType;
+        this._movecon      = 0;
+        this._movetimer    = 0;
+        this._movedir      = 1;
+        this._alivetimer   = 0;
+        this._hurttimer    = 0;
+        this._hit          = 0;
+        this._hitdir       = -1;
+        this._cantFindPath = false;
+        this._spdtimer     = 0;
+        this._spd          = 2.5;
 
-        // La posición viene del spawner ya alineada al grid (col*36+2, row*36+2)
-        this._xprev2 = x;
-        this._yprev2 = y;
-        // Celda objetivo actual
+        // _imageIndex es un float que avanza 0.125/frame (= 0.25/frame a 30fps)
+        // Se usa para seleccionar el frame correcto del sprite de aparición/desaparición
+        this._imageIndex   = 0;
+
+        this._xprev2      = x;
+        this._yprev2      = y;
         this._targetCellX = x;
         this._targetCellY = y;
 
@@ -57,19 +62,22 @@ this.body.setOffset(0, 0);
     actualizar(delta) {
         if (this.isDead) return;
 
+        // ── Velocidad progresiva (igual que GML, ajustada a 60fps) ──
+        // GML: spdtimer > 60 && < 180 a 30fps → > 120 && < 360 a 60fps
         this._spdtimer++;
-        if (this._spdtimer > 60 && this._spdtimer < 180)
-            this._spd = Phaser.Math.Linear(2.5, 1, (this._spdtimer - 60) / 120);
-        if (this._spdtimer >= 180)
+        if (this._spdtimer > 120 && this._spdtimer < 360)
+            this._spd = Phaser.Math.Linear(2.5, 1, (this._spdtimer - 120) / 240);
+        if (this._spdtimer >= 360)
             this._spd = 1;
 
-        // hurttimer
+        // ── hurttimer ────────────────────────────────────────
+        // GML: hurttimer = 12 a 30fps → 24 a 60fps (ya se setea en takeHit)
         if (this._hurttimer > 0) {
             this._hurttimer--;
-            if (this._hurttimer > 6) {
+            if (this._hurttimer > 12) { // GML > 6 → > 12 a 60fps
                 const pushDir = this._hitdir;
-                const dx = [0,1,0,-1][pushDir] ?? 0;
-                const dy = [1,0,-1,0][pushDir] ?? 0;
+                const dx = [0, 1, 0, -1][pushDir] ?? 0;
+                const dy = [1, 0, -1,  0][pushDir] ?? 0;
                 for (let i = 0; i < 10; i++) {
                     if (!this._wouldCollide(this.x + dx, this.y + dy))
                         { this.x += dx; this.y += dy; }
@@ -77,25 +85,38 @@ this.body.setOffset(0, 0);
                 }
             }
             if (this._hurttimer === 0) {
-                this._alivetimer = 600;
+                this._alivetimer  = 600;
                 this.activeHitbox = false;
             }
             return;
         }
 
-        // ── Estado init: animación de aparición ───────────────
+        // ─────────────────────────────────────────────────────
+        // ESTADO: init — animación de surgir del suelo
+        // GML: image_index += 0.25 @ 30fps → 0.125 @ 60fps
+        //      frames enemy_appear_0..4 (índices 0-4)
+        //      al llegar a 5 → cambiar a sprite de caminar
+        // ─────────────────────────────────────────────────────
         if (this._state === 'init') {
-            this._imageIndex += 0.25;
+            this._imageIndex += 0.125; // 0.25 GML × 0.5 = 0.125 Phaser
+
+            // Mostrar el frame correcto de la animación de aparición
+            const frame = Math.min(Math.floor(this._imageIndex), 4);
+            this.setTexture(`enemy_appear_${frame}`);
+
             if (this._imageIndex >= 5) {
-                this._imageIndex = 0;
-                this.setTexture('enemy_walk_0');
+                // Aparición completa — pasar a estado de movimiento
+                this._imageIndex  = 0;
                 this._state       = 'move';
                 this.activeHitbox = true;
+                this.setTexture('enemy_walk_0');
             }
             return;
         }
 
-        // ── Estado move ───────────────────────────────────────
+        // ─────────────────────────────────────────────────────
+        // ESTADO: move
+        // ─────────────────────────────────────────────────────
         if (this._state === 'move') {
             this._alivetimer++;
 
@@ -107,8 +128,6 @@ this.body.setOffset(0, 0);
                 this._yprev2 = this._yprevious;
             }
 
-            // Solo desaparecen al ser golpeados por el jugador, no por tiempo
-            // (cantFindPath sigue activo para evitar enemigos completamente atascados)
             if (this._cantFindPath && this._state !== 'disappear')
                 this._enterDisappear();
 
@@ -117,7 +136,6 @@ this.body.setOffset(0, 0);
 
             if (this._movecon === 0) {
                 if (this._moveType === 0) {
-                    // Movimiento aleatorio — elegir dirección libre
                     this._movedir = Phaser.Math.Between(0, 3);
                     for (let i = 0; i < 4; i++) {
                         const off = this.DIRS[this._movedir];
@@ -126,7 +144,6 @@ this.body.setOffset(0, 0);
                         if (!this._wouldCollide(nx, ny)) break;
                         this._movedir = (this._movedir + 1) % 4;
                     }
-                    // Snapear al grid antes de calcular destino
                     const sx0 = Math.round(this.x / this.CELL_SIZE) * this.CELL_SIZE;
                     const sy0 = Math.round(this.y / this.CELL_SIZE) * this.CELL_SIZE;
                     const off = this.DIRS[this._movedir];
@@ -136,7 +153,6 @@ this.body.setOffset(0, 0);
                 }
 
                 if (this._moveType === 1) {
-                    // Persecución — elegir la dirección que más acerca al jugador
                     const player = this.scene.player;
                     const dx     = player.x - this.x;
                     const dy     = player.y - this.y;
@@ -145,7 +161,6 @@ this.body.setOffset(0, 0);
                     else
                         this._movedir = dy > 0 ? 3 : 1;
 
-                    // Si esa dirección choca, intentar las otras
                     for (let i = 0; i < 4; i++) {
                         const off = this.DIRS[this._movedir];
                         const nx  = this.x + off.x * this.CELL_SIZE;
@@ -153,9 +168,8 @@ this.body.setOffset(0, 0);
                         if (!this._wouldCollide(nx, ny)) break;
                         this._movedir = (this._movedir + 1) % 4;
                     }
-                    // Snapear al grid antes de calcular destino
-                    const sx1 = Math.round(this.x / this.CELL_SIZE) * this.CELL_SIZE;
-                    const sy1 = Math.round(this.y / this.CELL_SIZE) * this.CELL_SIZE;
+                    const sx1  = Math.round(this.x / this.CELL_SIZE) * this.CELL_SIZE;
+                    const sy1  = Math.round(this.y / this.CELL_SIZE) * this.CELL_SIZE;
                     const off1 = this.DIRS[this._movedir];
                     this._targetCellX = sx1 + off1.x * this.CELL_SIZE;
                     this._targetCellY = sy1 + off1.y * this.CELL_SIZE;
@@ -166,19 +180,15 @@ this.body.setOffset(0, 0);
             if (this._movecon === 1) {
                 this._movetimer++;
 
-                // Animar según dirección
                 const frameMap = [1, 2, 3, 0];
-                this._imageIndex = frameMap[this._movedir];
-                this.setTexture(`enemy_walk_${this._imageIndex}`);
+                this.setTexture(`enemy_walk_${frameMap[this._movedir]}`);
 
-                // Mover suavemente hacia la celda objetivo
-                const spd = this._spd * 0.8;
-                const dx  = this._targetCellX - this.x;
-                const dy  = this._targetCellY - this.y;
+                const spd  = this._spd * 0.8;
+                const dx   = this._targetCellX - this.x;
+                const dy   = this._targetCellY - this.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
 
                 if (dist <= spd) {
-                    // Llegó a la celda — snapear exacto y elegir siguiente
                     this.x = this._targetCellX;
                     this.y = this._targetCellY;
                     this._movecon   = 0;
@@ -193,12 +203,22 @@ this.body.setOffset(0, 0);
             }
         }
 
-        // ── Estado disappear ──────────────────────────────────
+        // ─────────────────────────────────────────────────────
+        // ESTADO: disappear — animación de hundirse en el suelo
+        // GML: empieza en image_index = 5, resta 0.25 @ 30fps
+        //      → resta 0.125 @ 60fps
+        //      frames enemy_appear_4..0 (al revés)
+        // ─────────────────────────────────────────────────────
         if (this._state === 'disappear') {
             this.activeHitbox = false;
-            this._imageIndex -= 0.25;
+            this._imageIndex -= 0.125; // 0.25 GML × 0.5 = 0.125 Phaser
 
-            if (this._imageIndex < 0) {
+            if (this._imageIndex > 0) {
+                // Mostrar frame de desaparición en orden inverso
+                const frame = Math.min(Math.floor(this._imageIndex), 4);
+                this.setTexture(`enemy_appear_${frame}`);
+            } else {
+                // Desaparición completa
                 this.isDead = true;
                 this.destroy();
             }
@@ -209,7 +229,8 @@ this.body.setOffset(0, 0);
     takeHit(hitdir) {
         if (this._hurttimer > 0 || this._state === 'disappear') return;
 
-        this._hurttimer   = 12;
+        // GML: hurttimer = 12 @ 30fps → 24 @ 60fps
+        this._hurttimer   = 24;
         this.activeHitbox = false;
         this._hitdir      = hitdir;
         this._hit         = 1;
@@ -219,24 +240,23 @@ this.body.setOffset(0, 0);
     }
 
     _enterDisappear() {
-        this._state        = 'disappear';
-        this.activeHitbox  = false;
-        this._imageIndex   = 5;
-        this._movecon      = 0;
-        this._movetimer    = 0;
+        this._state       = 'disappear';
+        this.activeHitbox = false;
+        // GML empieza disappear en image_index = 5 → aquí igual,
+        // el loop de disappear irá bajando de 5 a 0
+        this._imageIndex  = 5;
+        this._movecon     = 0;
+        this._movetimer   = 0;
     }
 
     _wouldCollide(nx, ny) {
         if (!this.scene.wallsLayer) return false;
         const TILE = this.CELL_SIZE;
-        // Convertir posición mundo a celda del tilemap
-        const col = Math.floor(nx / TILE);
-        const row = Math.floor(ny / TILE);
+        const col  = Math.floor(nx / TILE);
+        const row  = Math.floor(ny / TILE);
         const layer = this.scene.wallsLayer.layer;
-        // Fuera del mapa = colisión
-        if (row < 0 || row >= layer.data.length) return true;
+        if (row < 0 || row >= layer.data.length)    return true;
         if (col < 0 || col >= layer.data[0].length) return true;
-        // index <= 0 = libre, cualquier otro = pared
         const tile = layer.data[row][col];
         return tile && tile.index > 0;
     }
