@@ -1,0 +1,58 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "tipe.tsx",
+    "expandedProjectPaths": [
+    ],
+    "file.lastUsedOpenFilter": "Todos los archivos (*)",
+    "fileStates": {
+        "": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "#tipe": {
+            "scaleInDock": 1
+        },
+        "MapaEscena.tmx": {
+            "scale": 1,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 449,
+                "y": 327
+            }
+        },
+        "MapaEscena.tmx#tipe": {
+            "scaleInDock": 1
+        },
+        "tipe.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        }
+    },
+    "frame.defaultDuration": 400,
+    "last.exportedFilePath": "C:/Users/Matias/Documents/ProyectoFinal/phaser-game_proyecto/phaser-game/phaser_game_proyecto/src/assets/tiles",
+    "last.imagePath": "C:/Users/Matias/Documents/ProyectoFinal/phaser-game_proyecto/phaser-game/phaser_game_proyecto/src/assets/tiles",
+    "map.height": 9,
+    "map.lastUsedExportFilter": "JSON map files (*.tmj *.json)",
+    "map.lastUsedFormat": "tmx",
+    "map.tileHeight": 36,
+    "map.tileWidth": 36,
+    "map.width": 12,
+    "openFiles": [
+        "tipe.tsx",
+        "MapaEscena.tmx"
+    ],
+    "project": "",
+    "property.type": "bool",
+    "recentFiles": [
+        "tipe.tsx",
+        "MapaEscena.tmx"
+    ],
+    "tileset.lastUsedFormat": "tsx",
+    "tileset.tileSize": {
+        "height": 36,
+        "width": 36
+    }
+}
