@@ -81,10 +81,10 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         let animKey, offsetX = 0, offsetY = 0, hitW = 20, hitH = 20;
 
         switch (this.lastDir) {
-            case 'up':    animKey = 'attack-up';    offsetY = -32; hitW = 20; hitH = 16; break;
-            case 'down':  animKey = 'attack-down';  offsetY = 32;  hitW = 20; hitH = 16; break;
-            case 'left':  animKey = 'attack-left';  offsetX = -32; hitW = 16; hitH = 20; break;
-            case 'right': animKey = 'attack-right'; offsetX = 32;  hitW = 16; hitH = 20; break;
+            case 'up':    animKey = 'attack-up';    offsetY = -36; hitW = 36; hitH = 36; break;
+case 'down':  animKey = 'attack-down';  offsetY = 36;  hitW = 36; hitH = 36; break;
+case 'left':  animKey = 'attack-left';  offsetX = -36; hitW = 36; hitH = 36; break;
+case 'right': animKey = 'attack-right'; offsetX = 36;  hitW = 36; hitH = 36; break;
         }
 
         this.anims.play(animKey, true);

@@ -11,18 +11,6 @@ import { ShadowMantleFire }                  from '../entities/ShadowMantle/Shad
 import { ShadowMantleFireController }        from '../entities/ShadowMantle/ShadowMantleFireController.js';
 import Player                                from '../entities/player.js';
 
-/**
- * BossScene — Escena dedicada al combate contra Shadow Mantle.
- *
- * Grupos:
- *   this.boss          → ShadowMantle (instancia única)
- *   this.bossBullets   → todos los proyectiles del boss
- *   this.bossEnemies   → ShadowMantleEnemy + ShadowMantleClone
- *   this.fireControllers → array de ShadowMantleFireController (no son sprites)
- *
- * Para iniciar la escena desde otra:
- *   this.scene.start('BossScene', { segundos: N, playerHP: N });
- */
 export default class BossScene extends Phaser.Scene {
 
     constructor() { super({ key: 'BossScene' }); }
@@ -38,7 +26,7 @@ export default class BossScene extends Phaser.Scene {
         // ── Música ────────────────────────────────────────────
         this.load.audio('nightmare_boss', '/src/assets/sounds/nightmare_boss_heavy.ogg');
 
-        // ── Player (igual que BaseGameScene) ─────────────────
+        // ── Player ────────────────────────────────────────────
         this.load.audio('player_hit', '/src/assets/sounds/snd_hurt.wav');
         this.load.audio('snd_sword',  '/src/assets/sounds/snd_sword.wav');
         this.load.image('healthbar',  '/src/assets/sprites/spr_hp_bar.png');
@@ -73,7 +61,7 @@ export default class BossScene extends Phaser.Scene {
             }
         });
 
-        // ── Proyectiles (placeholders hasta tener sprites reales) ─
+        // ── Proyectiles ───────────────────────────────────────
         this.load.image('mantle_bomb_0',          '/src/assets/sprites/spr_smallbullet.png');
         this.load.image('mantle_bomb_shadow',      '/src/assets/sprites/spr_smallbullet_outline.png');
         this.load.image('mantle_cloud_0',          '/src/assets/sprites/spr_smallbullet.png');
@@ -86,11 +74,11 @@ export default class BossScene extends Phaser.Scene {
                 `/src/assets/sprites/spr_boss/spr_shadow_mantle_cloud_projectile/spr_shadow_mantle_cloud_projectile_${i}.png`);
 
         // ── Enemy sprites ─────────────────────────────────────
-   this.load.image('enemy_appear_0', '/src/assets/sprites/spr_boss/gustavo.png');
-for (let i = 1; i < 6; i++)
-    this.load.image(`enemy_appear_${i}`, '/src/assets/sprites/spr_boss/gustavo.png');
-for (let i = 0; i < 4; i++)
-    this.load.image(`enemy_walk_${i}`, '/src/assets/sprites/spr_boss/gustavo.png');
+        this.load.image('enemy_appear_0', '/src/assets/sprites/spr_boss/gustavo.png');
+        for (let i = 1; i < 6; i++)
+            this.load.image(`enemy_appear_${i}`, '/src/assets/sprites/spr_boss/gustavo.png');
+        for (let i = 0; i < 4; i++)
+            this.load.image(`enemy_walk_${i}`, '/src/assets/sprites/spr_boss/gustavo.png');
 
         // ── Sonidos del boss ──────────────────────────────────
         this.load.audio('snd_board_bosshit',           '/src/assets/sounds/snd_boss/snd_board_bosshit.wav');
@@ -124,7 +112,6 @@ for (let i = 0; i < 4; i++)
             const tileset = this.map.addTilesetImage('tipe', 'tiles_boss');
             this.groundLayer = this.map.createLayer('ground', tileset, 0, 0);
             this.wallsLayer  = this.map.createLayer('walls',  tileset, 0, 0);
-            // Tile 369 no tiene collides=true en el tileset — excluimos solo los tiles vacíos (0)
             this.wallsLayer.setCollisionByExclusion([0, -1]);
         } catch(e) {
             this.add.rectangle(0, 0, 432, 324, 0x111111).setOrigin(0);
@@ -269,12 +256,21 @@ for (let i = 0; i < 4; i++)
                 player.takeDamage(bullet.damage ?? 2);
                 player.lastDamageTime = ahora;
                 this.hitSound.play();
-                const angle = Phaser.Math.Angle.Between(bullet.x, bullet.y, player.x, player.y);
-                player.setVelocity(Math.cos(angle) * 300, Math.sin(angle) * 300);
-                this.time.delayedCall(150, () => { if (!player.isDead) player.setVelocity(0); });
+
+                const pushDistance = 32;
+                let dx = player.x - bullet.x;
+                let dy = player.y - bullet.y;
+                const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                dx /= dist; dy /= dist;
+                this.tweens.add({
+                    targets: player,
+                    x: player.x + dx * pushDistance,
+                    y: player.y + dy * pushDistance,
+                    duration: 150,
+                    ease: 'Power1'
+                });
             }
 
-            // FIX: si destroyonhit=false, llamar onHit() en vez de destruir
             if (bullet.destroyonhit ?? true) {
                 bullet.destroy();
             } else if (bullet.onHit) {
@@ -289,9 +285,19 @@ for (let i = 0; i < 4; i++)
                 player.takeDamage(2);
                 player.lastDamageTime = ahora;
                 this.hitSound.play();
-                const angle = Phaser.Math.Angle.Between(boss.x, boss.y, player.x, player.y);
-                player.setVelocity(Math.cos(angle) * 300, Math.sin(angle) * 300);
-                this.time.delayedCall(150, () => { if (!player.isDead) player.setVelocity(0); });
+
+                const pushDistance = 32;
+                let dx = player.x - boss.x;
+                let dy = player.y - boss.y;
+                const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                dx /= dist; dy /= dist;
+                this.tweens.add({
+                    targets: player,
+                    x: player.x + dx * pushDistance,
+                    y: player.y + dy * pushDistance,
+                    duration: 150,
+                    ease: 'Power1'
+                });
             }
         });
 
@@ -303,9 +309,19 @@ for (let i = 0; i < 4; i++)
                 player.takeDamage(enemy.damage ?? 2);
                 player.lastDamageTime = ahora;
                 this.hitSound.play();
-                const angle = Phaser.Math.Angle.Between(enemy.x, enemy.y, player.x, player.y);
-                player.setVelocity(Math.cos(angle) * 300, Math.sin(angle) * 300);
-                this.time.delayedCall(150, () => { if (!player.isDead) player.setVelocity(0); });
+
+                const pushDistance = 32;
+                let dx = player.x - enemy.x;
+                let dy = player.y - enemy.y;
+                const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                dx /= dist; dy /= dist;
+                this.tweens.add({
+                    targets: player,
+                    x: player.x + dx * pushDistance,
+                    y: player.y + dy * pushDistance,
+                    duration: 150,
+                    ease: 'Power1'
+                });
             }
         });
 

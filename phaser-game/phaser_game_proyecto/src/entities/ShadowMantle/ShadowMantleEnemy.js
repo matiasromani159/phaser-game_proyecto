@@ -16,8 +16,8 @@ export class ShadowMantleEnemy extends Phaser.Physics.Arcade.Sprite {
         this.body.allowGravity = false;
         this.setScale(0.1); // 360px * 0.1 = 36px
         // Reducir hitbox de física para que no se meta en las paredes
-        this.body.setSize(12, 12);
-        this.body.setOffset(2, 2);
+        this.body.setSize(36, 36);
+this.body.setOffset(0, 0);
         this.setOrigin(0, 0); // origen top-left para alinearse al grid de tiles
 
         this.CELL_SIZE   = 36; // alineado al tamaño real del tile del mapa
