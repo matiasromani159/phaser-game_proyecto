@@ -46,9 +46,7 @@ export default class BaseGameScene extends Phaser.Scene {
         this.load.audio('snd_sword',  '/src/assets/sounds/snd_sword.wav');
         this.load.image('healthbar',  '/src/assets/sprites/spr_hp_bar.png');
 
-        // ── NUEVO: item curativo ──────────────────────────────
         this.load.image('spr_board_candy', '/src/assets/sprites/spr_board_candy.png');
-        // ─────────────────────────────────────────────────────
 
         // Sonidos del sistema de diálogo
         this.load.audio('snd_board_text_main',     '/src/assets/sounds/snd_board_text_main.wav');
@@ -83,7 +81,7 @@ export default class BaseGameScene extends Phaser.Scene {
         this.load.image('monster_angry_1', '/src/assets/sprites/spr_monster_angery/spr_board_monster_angery_1.png');
         this.load.image('spr_spear',       '/src/assets/sprites/spr_spear.png');
 
-        // MonsterLizard — todos los tipos y variantes
+        // MonsterLizard
         const lizardVariants = ['', '_alt', '_jumpy'];
         const lizardDirs     = ['l', 'r'];
         lizardVariants.forEach(v => {
@@ -175,14 +173,12 @@ export default class BaseGameScene extends Phaser.Scene {
         if (savedHP !== undefined) this.player.vida = savedHP;
 
         // Grupos
-        this.monsters     = this.physics.add.group();
-        this.flowers      = [];
-        this.spears       = [];
-        this.lizards      = [];
-        this.pellets      = this.physics.add.group();
-        // ── NUEVO: grupo de drops curativos ──────────────────
-        this.healthDrops  = this.physics.add.group();
-        // ─────────────────────────────────────────────────────
+        this.monsters    = this.physics.add.group();
+        this.flowers     = [];
+        this.spears      = [];
+        this.lizards     = [];
+        this.pellets     = this.physics.add.group();
+        this.healthDrops = this.physics.add.group();
 
         cfg.monsters.forEach(m => {
             if (m.type === 'flower') {
@@ -210,6 +206,9 @@ export default class BaseGameScene extends Phaser.Scene {
         this.cameras.main.startFollow(this.player);
         this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
         this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
+
+        // Mejora la detección con tiles para velocidades altas (knockback)
+        this.physics.world.TILE_BIAS = 32;
 
         if (!data?.fromGameOver) {
             this.cameras.main.fadeIn(500, 0, 0, 0);
@@ -262,6 +261,32 @@ export default class BaseGameScene extends Phaser.Scene {
         }
 
         this._checkBordes();
+    }
+
+    // ─────────────────────────────────────────────
+    // KNOCKBACK — respeta colisiones con paredes
+    // Usa isKnockedBack para que player.update() no
+    // cancele la velocidad mientras dura el empuje.
+    // ─────────────────────────────────────────────
+    _applyKnockback(player, sourceX, sourceY) {
+        const KNOCKBACK_SPEED    = 280;
+        const KNOCKBACK_DURATION = 150;
+
+        let dx = player.x - sourceX;
+        let dy = player.y - sourceY;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        dx /= dist;
+        dy /= dist;
+
+        player.isKnockedBack = true;
+        player.setVelocity(dx * KNOCKBACK_SPEED, dy * KNOCKBACK_SPEED);
+
+        this.time.delayedCall(KNOCKBACK_DURATION, () => {
+            if (player?.body) {
+                player.setVelocity(0, 0);
+                player.isKnockedBack = false;
+            }
+        });
     }
 
     // ─────────────────────────────────────────────
@@ -395,48 +420,40 @@ export default class BaseGameScene extends Phaser.Scene {
         this.physics.add.collider(this.player,   this.wallsLayer);
         this.physics.add.collider(this.monsters, this.wallsLayer);
 
+        // Jugador ← contacto con monstruo
         this.physics.add.overlap(this.player, this.monsters, (player, monster) => {
             const ahora = this.time.now;
             if (ahora - player.lastDamageTime > 1000) {
                 player.takeDamage(10);
                 player.lastDamageTime = ahora;
                 this.hitSound.play();
-
-                const pushDistance = 32;
-                let dx = player.x - monster.x;
-                let dy = player.y - monster.y;
-                const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-                dx /= dist; dy /= dist;
-
-                this.tweens.add({
-                    targets: player,
-                    x: player.x + dx * pushDistance,
-                    y: player.y + dy * pushDistance,
-                    duration: 150,
-                    ease: 'Power1'
-                });
+                this._applyKnockback(player, monster.x, monster.y);
             }
         });
 
+        // Ataque del jugador → monstruo
         this.physics.add.overlap(this.player.attackHitbox, this.monsters, (hitbox, monster) => {
             monster.die();
         });
 
+        // Jugador ← pellets
         this.physics.add.overlap(this.player, this.pellets, (player, pellet) => {
             const ahora = this.time.now;
             if (ahora - player.lastDamageTime > 1000) {
                 player.takeDamage(10);
                 player.lastDamageTime = ahora;
                 this.hitSound.play();
+                this._applyKnockback(player, pellet.x, pellet.y);
             }
             pellet.destroy();
         });
 
+        // Ataque del jugador → pellets
         this.physics.add.overlap(this.player.attackHitbox, this.pellets, (hitbox, pellet) => {
             pellet.destroy();
         });
 
-        // ── NUEVO: jugador recoge HealthDrop al tocarlo ───────
+        // Jugador recoge HealthDrop al tocarlo
         this.physics.add.overlap(
             this.player,
             this.healthDrops,
@@ -444,7 +461,6 @@ export default class BaseGameScene extends Phaser.Scene {
             null,
             this
         );
-        // ─────────────────────────────────────────────────────
     }
 
     _checkSwordVsFlowers() {

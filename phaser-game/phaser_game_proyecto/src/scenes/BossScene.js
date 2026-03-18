@@ -123,6 +123,9 @@ export default class BossScene extends Phaser.Scene {
             this.map?.heightInPixels ?? 324
         );
 
+        // Mejora la detección de colisiones con tiles para velocidades altas
+        this.physics.world.TILE_BIAS = 32;
+
         this._crearAnimaciones();
 
         // ── Controles ─────────────────────────────────────────
@@ -224,6 +227,14 @@ export default class BossScene extends Phaser.Scene {
             if (e.actualizar) e.actualizar(delta);
         });
 
+        // ── Comprobación manual: ataque del jugador vs enemies ─
+        // Se hace aquí (no solo por overlap de Phaser) para cubrir
+        // el caso en que el jugador esté DENTRO del enemigo y el
+        // attackHitbox no solape por estar posicionado delante.
+        if (this.player.isAttacking) {
+            this._checkSwordVsEnemies();
+        }
+
         if (this.boss.movestyle === 'path') {
             this._flamePathAngle += 0.5;
             const cx = this.physics.world.bounds.width  / 2;
@@ -235,6 +246,71 @@ export default class BossScene extends Phaser.Scene {
         }
 
         this._actualizarBossHUD();
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // ATAQUE DE ESPADA VS ENEMIES — comprobación manual
+    // Cubre tanto el attackHitbox delante del jugador como
+    // el propio cuerpo del jugador, para que funcione aunque
+    // esté dentro del enemigo.
+    // ─────────────────────────────────────────────────────────
+    _checkSwordVsEnemies() {
+        // Zona de detección: unión del attackHitbox + el cuerpo del jugador
+        const player = this.player;
+
+        // Bounds del hitbox de ataque (ya posicionado delante)
+        const hb = player.attackHitbox;
+        const hbBounds = new Phaser.Geom.Rectangle(
+            hb.x - hb.width  / 2,
+            hb.y - hb.height / 2,
+            hb.width,
+            hb.height
+        );
+
+        // Bounds del propio jugador (para cuando está dentro del enemy)
+        const pBounds = player.getBounds();
+
+        this.bossEnemies.getChildren().forEach(enemy => {
+            if (!enemy.activeHitbox || enemy.isDead) return;
+            if (enemy._hurttimer > 0) return; // ya recibió golpe, en iframes
+
+            const eBounds = enemy.getBounds();
+
+            const hitByHitbox = Phaser.Geom.Intersects.RectangleToRectangle(hbBounds, eBounds);
+            const hitByBody   = Phaser.Geom.Intersects.RectangleToRectangle(pBounds,  eBounds);
+
+            if (hitByHitbox || hitByBody) {
+                if (enemy.takeHit) {
+                    enemy.takeHit(this._dirToIndex(player.lastDir));
+                    this.bossHitSound.play();
+                    this.boss.hitsduringenemies++;
+                }
+            }
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // KNOCKBACK — respeta colisiones con paredes
+    // ─────────────────────────────────────────────────────────
+    _applyKnockback(player, sourceX, sourceY) {
+        const KNOCKBACK_SPEED    = 280;
+        const KNOCKBACK_DURATION = 150;
+
+        let dx = player.x - sourceX;
+        let dy = player.y - sourceY;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        dx /= dist;
+        dy /= dist;
+
+        player.isKnockedBack = true;
+        player.setVelocity(dx * KNOCKBACK_SPEED, dy * KNOCKBACK_SPEED);
+
+        this.time.delayedCall(KNOCKBACK_DURATION, () => {
+            if (player?.body) {
+                player.setVelocity(0, 0);
+                player.isKnockedBack = false;
+            }
+        });
     }
 
     // ─────────────────────────────────────────────────────────
@@ -256,19 +332,7 @@ export default class BossScene extends Phaser.Scene {
                 player.takeDamage(bullet.damage ?? 2);
                 player.lastDamageTime = ahora;
                 this.hitSound.play();
-
-                const pushDistance = 32;
-                let dx = player.x - bullet.x;
-                let dy = player.y - bullet.y;
-                const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-                dx /= dist; dy /= dist;
-                this.tweens.add({
-                    targets: player,
-                    x: player.x + dx * pushDistance,
-                    y: player.y + dy * pushDistance,
-                    duration: 150,
-                    ease: 'Power1'
-                });
+                this._applyKnockback(player, bullet.x, bullet.y);
             }
 
             if (bullet.destroyonhit ?? true) {
@@ -285,19 +349,7 @@ export default class BossScene extends Phaser.Scene {
                 player.takeDamage(2);
                 player.lastDamageTime = ahora;
                 this.hitSound.play();
-
-                const pushDistance = 32;
-                let dx = player.x - boss.x;
-                let dy = player.y - boss.y;
-                const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-                dx /= dist; dy /= dist;
-                this.tweens.add({
-                    targets: player,
-                    x: player.x + dx * pushDistance,
-                    y: player.y + dy * pushDistance,
-                    duration: 150,
-                    ease: 'Power1'
-                });
+                this._applyKnockback(player, boss.x, boss.y);
             }
         });
 
@@ -309,19 +361,7 @@ export default class BossScene extends Phaser.Scene {
                 player.takeDamage(enemy.damage ?? 2);
                 player.lastDamageTime = ahora;
                 this.hitSound.play();
-
-                const pushDistance = 32;
-                let dx = player.x - enemy.x;
-                let dy = player.y - enemy.y;
-                const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-                dx /= dist; dy /= dist;
-                this.tweens.add({
-                    targets: player,
-                    x: player.x + dx * pushDistance,
-                    y: player.y + dy * pushDistance,
-                    duration: 150,
-                    ease: 'Power1'
-                });
+                this._applyKnockback(player, enemy.x, enemy.y);
             }
         });
 
@@ -333,9 +373,13 @@ export default class BossScene extends Phaser.Scene {
             }
         });
 
-        // Ataque del jugador → enemigos spawneados
+        // Ataque del jugador → enemies (overlap de Phaser como respaldo)
+        // La comprobación principal es _checkSwordVsEnemies() en update()
         this.physics.add.overlap(this.player.attackHitbox, this.bossEnemies, (hitbox, enemy) => {
-            if (this.player.isAttacking && enemy.takeHit) {
+            if (!this.player.isAttacking) return;
+            if (!enemy.activeHitbox || enemy.isDead) return;
+            if (enemy._hurttimer > 0) return;
+            if (enemy.takeHit) {
                 enemy.takeHit(this._dirToIndex(this.player.lastDir));
                 this.bossHitSound.play();
                 this.boss.hitsduringenemies++;
