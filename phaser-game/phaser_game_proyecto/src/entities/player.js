@@ -158,9 +158,14 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         this._setAttackTexture(this.swordfacing, frameIdx);
 
         // Crear hitbox en frame 12 (= GML frame 6)
-        if (this.swordbuffer === 12) {
-            this._activarHitbox(this.swordfacing);
-        }
+       // Crear hitbox en frame 12 solo si no hay pared delante
+if (this.swordbuffer === 12) {
+    if (!this._hayParedEnfrente(this.swordfacing)) {
+        this._activarHitbox(this.swordfacing);
+    }
+}
+
+
 
         if (canRedirect && this.swordbuffer !== 12) {
             this._moverHitbox(this.swordfacing);
@@ -174,6 +179,26 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
             this._setIdleTexture(this.lastDir);
         }
     }
+
+    _hayParedEnfrente(dir) {
+    if (!this.scene.wallsLayer) return false;
+
+    const DIST = 20; // px hacia delante para comprobar
+    const offsets = {
+        right: { x:  DIST, y: 0     },
+        left:  { x: -DIST, y: 0     },
+        down:  { x: 0,     y:  DIST },
+        up:    { x: 0,     y: -DIST },
+    };
+
+    const off  = offsets[dir];
+    const tile = this.scene.wallsLayer.getTileAtWorldXY(
+        this.x + off.x,
+        this.y + off.y
+    );
+
+    return tile && tile.collides;
+}
 
     // ─────────────────────────────────────────────────────────
     // TEXTURA DE ATAQUE CON ORIGIN Y BODY AJUSTADOS

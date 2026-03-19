@@ -29,8 +29,8 @@ export class ShadowMantleEnemy extends Phaser.Physics.Arcade.Sprite {
 
         this.body.allowGravity = false;
         this.setScale(2.25);
-        this.body.setSize(16, 16);
-        this.body.setOffset(0, 0);
+        this.body.setSize(10, 10);
+        this.body.setOffset(3, 3);
         this.setOrigin(0, 0);
 
         this.CELL_SIZE    = 36;
