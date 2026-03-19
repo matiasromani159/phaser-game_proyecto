@@ -25,6 +25,10 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         // Origin base del sprite idle (16x16 centrado)
         this.setOrigin(0.5, 0.5);
 
+        // Body fijo: 16x16 pre-escala (= 36x36 en pantalla con scale 2.25)
+        // El offset varía según la dirección de ataque — ver _setBodyForDir()
+        this._setBodyForDir('down');
+
         // ── Invencibilidad ────────────────────────────────────
         this.isInvincible   = false;
         this.lastDamageTime = 0;
@@ -33,8 +37,6 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         this.isKnockedBack = false;
 
         // ── Ataque ────────────────────────────────────────────
-        // GML: swordbuffer = 8 a 30fps → 16 a 60fps
-        // Durante el ataque canfreemove = 0 → posición anclada
         this.swordbuffer  = 0;
         this.swordfacing  = 'down';
         this.isAttacking  = false;
@@ -53,6 +55,27 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     // ─────────────────────────────────────────────────────────
+    // BODY FIJO POR DIRECCIÓN
+    //
+    // Phaser posiciona el body desde el top-left del sprite.
+    // El sprite idle es 16x16 → Kris siempre ocupa esos 16x16.
+    // En los sprites de ataque Kris ocupa una mitad del canvas:
+    //
+    //   right 32x16 origin(0.25,0.5): Kris en x[0..15]  → offset (0,  0)
+    //   left  32x16 origin(0.75,0.5): Kris en x[16..31] → offset (16, 0)
+    //   down  16x32 origin(0.5,0.25): Kris en y[0..15]  → offset (0,  0)
+    //   up    16x32 origin(0.5,0.75): Kris en y[16..31] → offset (0,  16)
+    // ─────────────────────────────────────────────────────────
+    _setBodyForDir(dir) {
+        switch (dir) {
+            case 'left':  this.setBodySize(16, 16); this.setOffset(16, 0);  break;
+            case 'up':    this.setBodySize(16, 16); this.setOffset(0,  16); break;
+            default:      this.setBodySize(16, 16); this.setOffset(0,  0);  break;
+            // 'right', 'down', 'idle' → offset (0, 0)
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────
     // UPDATE
     // ─────────────────────────────────────────────────────────
     update(cursors) {
@@ -65,7 +88,6 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         if (this.isKnockedBack || this.isAttacking) {
             if (this.isAttacking) {
                 this.setVelocity(0);
-                // Anclar posición (= canfreemove=0 en Deltarune)
                 this.x = this._attackLockX;
                 this.y = this._attackLockY;
                 this._moverHitbox(this.swordfacing);
@@ -75,8 +97,8 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         }
 
         // ── Movimiento libre ──────────────────────────────────
-        // Restaurar origin idle al salir del ataque
         this.setOrigin(0.5, 0.5);
+        this._setBodyForDir('idle');
 
         this.setVelocity(0);
         let moving = false;
@@ -126,15 +148,13 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
 
         this.lastDir = this.swordfacing;
 
-        // Sprite frame según buffer (GML x2)
+        // Sprite frame según buffer
         let frameIdx;
         if      (this.swordbuffer >= 12) frameIdx = 0;
         else if (this.swordbuffer >= 6)  frameIdx = 1;
         else if (this.swordbuffer >= 4)  frameIdx = 2;
         else                             frameIdx = 0;
 
-        // Aplicar textura y origin correcto para que el cuerpo
-        // de Kris quede anclado visualmente en su posición
         this._setAttackTexture(this.swordfacing, frameIdx);
 
         // Crear hitbox en frame 12 (= GML frame 6)
@@ -156,20 +176,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     // ─────────────────────────────────────────────────────────
-    // TEXTURA DE ATAQUE CON ORIGIN AJUSTADO
-    //
-    // El sprite idle es 16x16 con origin (0.5, 0.5).
-    // El centro del cuerpo de Kris está en (8, 8) del sprite.
-    //
-    // Al atacar el sprite crece en la dirección del ataque:
-    //   right:  32x16 → cuerpo en los primeros 16px (izquierda)
-    //           origin.x = 8/32 = 0.25  (para que x=0.25*32=8 coincida)
-    //   left:   32x16 → cuerpo en los últimos 16px (derecha)
-    //           origin.x = 24/32 = 0.75
-    //   down:   16x32 → cuerpo en los primeros 16px (arriba)
-    //           origin.y = 8/32 = 0.25
-    //   up:     16x32 → cuerpo en los últimos 16px (abajo)
-    //           origin.y = 24/32 = 0.75
+    // TEXTURA DE ATAQUE CON ORIGIN Y BODY AJUSTADOS
     // ─────────────────────────────────────────────────────────
     _setAttackTexture(dir, frameIdx) {
         this.setTexture(`${dir}Attack${frameIdx}`);
@@ -179,6 +186,9 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
             case 'down':  this.setOrigin(0.5,  0.25); break;
             case 'up':    this.setOrigin(0.5,  0.75); break;
         }
+        // Restaurar body correcto para esta dirección
+        // (Phaser lo resetea al cambiar la textura)
+        this._setBodyForDir(dir);
     }
 
     // ─────────────────────────────────────────────────────────
@@ -191,7 +201,6 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         this.swordbuffer  = 16;
         this.swordfacing  = this.lastDir;
 
-        // Guardar posición — no se moverá hasta que acabe
         this._attackLockX = this.x;
         this._attackLockY = this.y;
 
@@ -199,7 +208,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     // ─────────────────────────────────────────────────────────
-    // HELPERS DEL HITBOX
+    // HELPERS DEL HITBOX DE ATAQUE
     // ─────────────────────────────────────────────────────────
     _hitboxConfig(dir) {
         const BASE = 36;
@@ -306,5 +315,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
             case 'left':  this.setTexture('left0');  break;
             case 'right': this.setTexture('right0'); break;
         }
+        // Restaurar body idle — offset siempre (0, 0) en idle
+        this._setBodyForDir('idle');
     }
 }
