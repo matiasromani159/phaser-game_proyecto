@@ -74,12 +74,18 @@ export default class BossScene extends Phaser.Scene {
                 `/src/assets/sprites/spr_boss/spr_shadow_mantle_cloud_projectile/spr_shadow_mantle_cloud_projectile_${i}.png`);
 
         // ── Enemy sprites ─────────────────────────────────────
-        this.load.image('enemy_appear_0', '/src/assets/sprites/spr_boss/gustavo.png');
-        for (let i = 1; i < 6; i++)
-            this.load.image(`enemy_appear_${i}`, '/src/assets/sprites/spr_boss/gustavo.png');
-        for (let i = 0; i < 4; i++)
-            this.load.image(`enemy_walk_${i}`, '/src/assets/sprites/spr_boss/gustavo.png');
+        this.load.image('enemy_hurt', '/src/assets/sprites/spr_boss/spr___hurt.png');
+for (let i = 0; i < 10; i++)
+    this.load.image(`enemy_laugh_${i}`,
+        `/src/assets/sprites/spr_boss/spr___laugh/spr___laugh_${i}.png`);
+       // ── Enemy sprites ─────────────────────────────────────────
+for (let i = 0; i < 5; i++)
+    this.load.image(`enemy_appear_${i}`,
+        `/src/assets/sprites/spr_boss/spr___appear/spr___appear_${i}.png`);
 
+for (let i = 0; i < 4; i++)
+    this.load.image(`enemy_walk_${i}`,
+        `/src/assets/sprites/spr_boss/spr___/spr____${i}.png`);
         // ── Sonidos del boss ──────────────────────────────────
         this.load.audio('snd_board_bosshit',           '/src/assets/sounds/snd_boss/snd_board_bosshit.wav');
         this.load.audio('snd_board_mantle_laugh_mid',  '/src/assets/sounds/snd_boss/snd_board_mantle_laugh_mid.wav');

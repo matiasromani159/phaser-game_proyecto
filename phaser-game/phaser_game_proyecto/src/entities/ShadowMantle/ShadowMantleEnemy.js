@@ -9,6 +9,15 @@
  *   GML: image_index += 0.25 por frame a 30fps
  *   Aquí: _imageIndex  += 0.125 por frame a 60fps
  *   → misma duración real: 5 / 0.25 = 20 frames GML = 40 frames Phaser
+ *
+ * Muerte por espada:
+ *   - NO hay animación de hundirse (disappear solo ocurre por timeout/cantfindpath)
+ *   - Al recibir golpe: parpadeo hurt+walk durante hurttimer, luego destroy()
+ *   - Efecto de risa (spr___laugh) y candy spawnan al destruirse
+ *
+ * Knockback:
+ *   - Usa setVelocity() para respetar colisiones con wallsLayer
+ *   - Requiere: physics.add.collider(bossEnemies, wallsLayer) en BossScene
  */
 export class ShadowMantleEnemy extends Phaser.Physics.Arcade.Sprite {
 
@@ -19,8 +28,8 @@ export class ShadowMantleEnemy extends Phaser.Physics.Arcade.Sprite {
         scene.physics.add.existing(this);
 
         this.body.allowGravity = false;
-        this.setScale(0.1);
-        this.body.setSize(36, 36);
+        this.setScale(2.25);
+        this.body.setSize(16, 16);
         this.body.setOffset(0, 0);
         this.setOrigin(0, 0);
 
@@ -42,9 +51,8 @@ export class ShadowMantleEnemy extends Phaser.Physics.Arcade.Sprite {
         this._spdtimer     = 0;
         this._spd          = 2.5;
 
-        // _imageIndex es un float que avanza 0.125/frame (= 0.25/frame a 30fps)
-        // Se usa para seleccionar el frame correcto del sprite de aparición/desaparición
         this._imageIndex   = 0;
+        this._hurtFlicker  = false;
 
         this._xprev2      = x;
         this._yprev2      = y;
@@ -62,50 +70,63 @@ export class ShadowMantleEnemy extends Phaser.Physics.Arcade.Sprite {
     actualizar(delta) {
         if (this.isDead) return;
 
-        // ── Velocidad progresiva (igual que GML, ajustada a 60fps) ──
-        // GML: spdtimer > 60 && < 180 a 30fps → > 120 && < 360 a 60fps
+        // ── Velocidad progresiva ──────────────────────────────
         this._spdtimer++;
         if (this._spdtimer > 120 && this._spdtimer < 360)
             this._spd = Phaser.Math.Linear(2.5, 1, (this._spdtimer - 120) / 240);
         if (this._spdtimer >= 360)
             this._spd = 1;
 
-        // ── hurttimer ────────────────────────────────────────
-        // GML: hurttimer = 12 a 30fps → 24 a 60fps (ya se setea en takeHit)
+        // ── hurttimer ─────────────────────────────────────────
+        // GML: hurttimer = 12 @ 30fps → 24 @ 60fps
+        // Al llegar a 0 se destruye (muerte por espada)
+        // El disappear por timeout/cantfindpath es independiente
         if (this._hurttimer > 0) {
             this._hurttimer--;
-            if (this._hurttimer > 12) { // GML > 6 → > 12 a 60fps
-                const pushDir = this._hitdir;
-                const dx = [0, 1, 0, -1][pushDir] ?? 0;
-                const dy = [1, 0, -1,  0][pushDir] ?? 0;
-                for (let i = 0; i < 10; i++) {
-                    if (!this._wouldCollide(this.x + dx, this.y + dy))
-                        { this.x += dx; this.y += dy; }
-                    else break;
-                }
+
+            // Parpadeo: alternar enemy_hurt / enemy_walk cada 2 frames
+            if ((this._hurttimer % 2) === 0) {
+                this._hurtFlicker = !this._hurtFlicker;
             }
+            this.setTexture(this._hurtFlicker
+                ? 'enemy_hurt'
+                : `enemy_walk_${[1, 2, 3, 0][this._movedir]}`
+            );
+
+            // Knockback usando física para respetar paredes
+            // GML: hurttimer > 6 @ 30fps → > 12 @ 60fps
+            // En vez de mover x/y directamente usamos velocidad
+            if (this._hurttimer === 23) {
+                // Solo seteamos la velocidad una vez al inicio del knockback
+                const pushDir = this._hitdir;
+                const vx = [ 0, 300,  0, -300][pushDir] ?? 0;
+                const vy = [300,  0, -300,  0][pushDir] ?? 0;
+                this.setVelocity(vx, vy);
+            }
+
+            if (this._hurttimer === 12) {
+                // Parar el knockback a mitad del hurttimer
+                this.setVelocity(0, 0);
+            }
+
+            // Al terminar el hurttimer → muerte
             if (this._hurttimer === 0) {
-                this._alivetimer  = 600;
-                this.activeHitbox = false;
+                this.setVelocity(0, 0);
+                this._die();
             }
             return;
         }
 
         // ─────────────────────────────────────────────────────
         // ESTADO: init — animación de surgir del suelo
-        // GML: image_index += 0.25 @ 30fps → 0.125 @ 60fps
-        //      frames enemy_appear_0..4 (índices 0-4)
-        //      al llegar a 5 → cambiar a sprite de caminar
         // ─────────────────────────────────────────────────────
         if (this._state === 'init') {
-            this._imageIndex += 0.125; // 0.25 GML × 0.5 = 0.125 Phaser
+            this._imageIndex += 0.125;
 
-            // Mostrar el frame correcto de la animación de aparición
             const frame = Math.min(Math.floor(this._imageIndex), 4);
             this.setTexture(`enemy_appear_${frame}`);
 
             if (this._imageIndex >= 5) {
-                // Aparición completa — pasar a estado de movimiento
                 this._imageIndex  = 0;
                 this._state       = 'move';
                 this.activeHitbox = true;
@@ -128,7 +149,8 @@ export class ShadowMantleEnemy extends Phaser.Physics.Arcade.Sprite {
                 this._yprev2 = this._yprevious;
             }
 
-            if (this._cantFindPath && this._state !== 'disappear')
+            // Timeout (alivetimer >= 600 @ 60fps = 300 @ 30fps) o atascado
+            if ((this._alivetimer >= 600 || this._cantFindPath) && this._state !== 'disappear')
                 this._enterDisappear();
 
             this._xprevious = this.x;
@@ -204,49 +226,102 @@ export class ShadowMantleEnemy extends Phaser.Physics.Arcade.Sprite {
         }
 
         // ─────────────────────────────────────────────────────
-        // ESTADO: disappear — animación de hundirse en el suelo
-        // GML: empieza en image_index = 5, resta 0.25 @ 30fps
-        //      → resta 0.125 @ 60fps
-        //      frames enemy_appear_4..0 (al revés)
+        // ESTADO: disappear — solo por timeout o cantfindpath
+        // (NO por muerte con espada — esa usa _die() directo)
         // ─────────────────────────────────────────────────────
         if (this._state === 'disappear') {
             this.activeHitbox = false;
-            this._imageIndex -= 0.125; // 0.25 GML × 0.5 = 0.125 Phaser
+            this._imageIndex -= 0.125;
 
             if (this._imageIndex > 0) {
-                // Mostrar frame de desaparición en orden inverso
                 const frame = Math.min(Math.floor(this._imageIndex), 4);
                 this.setTexture(`enemy_appear_${frame}`);
             } else {
-                // Desaparición completa
+                // Hundido por timeout — no spawna risa ni candy
                 this.isDead = true;
                 this.destroy();
             }
         }
     }
 
+    // ─────────────────────────────────────────────────────────
+    // MUERTE POR ESPADA
+    // Spawna risa + candy y se destruye
+    // ─────────────────────────────────────────────────────────
+    _die() {
+        if (this.isDead) return;
+        this.isDead       = true;
+        this.activeHitbox = false;
+        this._spawnLaughEffect();
+        this._spawnCandy();
+        this.destroy();
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // EFECTO DE RISA
+    // GML: scr_board_marker(x, y, spr___laugh, 0.4, depth, 2, 1)
+    // 10 frames, velocidad 0.4 @ 30fps → 0.2 @ 60fps
+    // ─────────────────────────────────────────────────────────
+    _spawnLaughEffect() {
+        const scene = this.scene;
+        const x     = this.x;
+        const y     = this.y;
+
+        const laugh = scene.add.image(x, y, 'enemy_laugh_0')
+            .setScale(2.25)
+            .setOrigin(0, 0)
+            .setDepth(this.depth + 1);
+
+        let frameF  = 0;
+        const TOTAL = 10;
+        const SPEED = 0.2; // 0.4 GML × 0.5
+
+        const timer = scene.time.addEvent({
+            delay   : 16,
+            repeat  : Math.ceil(TOTAL / SPEED) + 1,
+            callback: () => {
+                frameF += SPEED;
+                const f = Math.floor(frameF);
+                if (f >= TOTAL) {
+                    laugh.destroy();
+                    timer.remove();
+                } else {
+                    laugh.setTexture(`enemy_laugh_${f}`);
+                }
+            }
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // CANDY
+    // Emite evento para que BossScene lo gestione:
+    //   this.events.on('enemy-drop-candy', ({ x, y }) => { ... })
+    // ─────────────────────────────────────────────────────────
+    _spawnCandy() {
+        this.scene.events.emit('enemy-drop-candy', { x: this.x, y: this.y });
+    }
+
     // ── Recibir golpe de espada ───────────────────────────────
     takeHit(hitdir) {
         if (this._hurttimer > 0 || this._state === 'disappear') return;
 
-        // GML: hurttimer = 12 @ 30fps → 24 @ 60fps
-        this._hurttimer   = 24;
+        this._hurttimer   = 24; // 12 GML @ 30fps → 24 @ 60fps
         this.activeHitbox = false;
         this._hitdir      = hitdir;
         this._hit         = 1;
-
-        this._alivetimer = 600;
-        this._enterDisappear();
+        this._hurtFlicker = false;
     }
 
+    // ─────────────────────────────────────────────────────────
+    // DISAPPEAR por timeout/cantfindpath (no por espada)
+    // ─────────────────────────────────────────────────────────
     _enterDisappear() {
         this._state       = 'disappear';
         this.activeHitbox = false;
-        // GML empieza disappear en image_index = 5 → aquí igual,
-        // el loop de disappear irá bajando de 5 a 0
         this._imageIndex  = 5;
         this._movecon     = 0;
         this._movetimer   = 0;
+        this.setVelocity(0, 0);
     }
 
     _wouldCollide(nx, ny) {
