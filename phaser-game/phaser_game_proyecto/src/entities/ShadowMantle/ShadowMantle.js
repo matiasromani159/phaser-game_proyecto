@@ -326,7 +326,6 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
                 [151, null,                { rx: 0, ry: 29, tx: [160,320+1], ty: [224, 224+32+1] }],
             ];
             this._processBurstSchedule(schedule, t);
-
             if (t >= 182) this._endBurstwave();
         } else {
             const schedule = [
@@ -348,7 +347,6 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
                 [121, null,                { rx: 0, ry: 16, tx: [320,320+4*32+1], ty: [192, 192+2*32+1] }],
             ];
             this._processBurstSchedule(schedule, t);
-
             if (t >= 152) this._endBurstwave();
         }
     }
@@ -364,28 +362,23 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
 
     _spawnBomb(rx, ry, txRange, tyRange) {
         const scene = this.scene;
-        const TILE  = 36; // tamaño real de tile del mapa
+        const TILE  = 36;
 
-        // Generar candidatos alineados a la rejilla de tiles
-        // Columnas 1-10, filas 2-7 (evitando bordes con pared)
         const candidates = [];
         for (let col = 1; col <= 10; col++) {
             for (let row = 2; row <= 7; row++) {
                 const cx = col * TILE + TILE / 2;
                 const cy = row * TILE + TILE / 2;
-
-                // Filtrar tiles con colisión usando el wallsLayer
                 if (scene.wallsLayer) {
                     const tile = scene.wallsLayer.getTileAtWorldXY(cx, cy);
                     if (tile && tile.collides) continue;
                 }
-
                 candidates.push({ x: cx, y: cy });
             }
         }
 
         const player = scene.player;
-        const valid = candidates.filter(c =>
+        const valid  = candidates.filter(c =>
             Phaser.Math.Distance.Between(c.x, c.y, player.x, player.y) >= 50
         );
 
@@ -436,8 +429,6 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
 
         if (t === 75) {
             this.hitsduringenemies = 0;
-
-            // FIX: mover al boss al centro antes de reírse
             this.targetx   = 216;
             this.targety   = 100;
             this.movestyle = 'to point and stop';
@@ -446,32 +437,64 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
         }
 
         if (t === 77) {
-            this.hitsduringenemies++;
             this._playAnim('mantle-laugh');
             this.scene.sound.play('snd_board_mantle_laugh_mid', { detune: 500 });
-            this._laughTimer = 0; // contador para repetir la risa
+            this._laughTimer = 0;
         }
 
-        // Esperar a que el jugador mate a todos los enemigos
+        // ── Esperar mientras el boss ríe ──────────────────────
         if (t >= 77) {
+
+            // Salida 1: el jugador atacó directamente al boss
+            // Los enemies que queden vivos SE QUEDAN en el mapa
+            if (this.hitsduringenemies >= 1) {
+                this._endEnemyWave(false);
+                return;
+            }
+
+            // Salida 2: timeout ~5s — hundir los enemies restantes
+            if (t >= 377) {
+                this._endEnemyWave(true);
+                return;
+            }
+
             const enemiesAlive = this.scene.bossEnemies.getChildren()
                 .filter(e => !e.isDead && e.activeHitbox !== undefined).length;
 
+            // Salida 3: todos los enemies muertos — salida normal
             if (enemiesAlive === 0) {
-                // Todos muertos — terminar ataque
-                this._playAnim('mantle-idle');
-                this.spawnenemies      = 0;
-                this.spawnenemiestimer = 0;
-                this.attacktimer       = 20; // forzar _chooseAttack en el siguiente frame
-                this._laughTimer       = 0;
-            } else {
-                // Repetir sonido de risa cada ~120 frames (4 segundos a 30fps)
-                this._laughTimer = (this._laughTimer ?? 0) + 1;
-                if (this._laughTimer >= 120) {
-                    this._laughTimer = 0;
-                    this.scene.sound.play('snd_board_mantle_laugh_mid', { detune: 500 });
-                }
+                this._endEnemyWave(false);
+                return;
             }
+
+            // Repetir sonido de risa cada ~120 frames
+            this._laughTimer = (this._laughTimer ?? 0) + 1;
+            if (this._laughTimer >= 120) {
+                this._laughTimer = 0;
+                this.scene.sound.play('snd_board_mantle_laugh_mid', { detune: 500 });
+            }
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // FIN DE LA WAVE DE ENEMIGOS
+    //
+    // sinkEnemies = true  → hundir los enemies que queden (timeout)
+    // sinkEnemies = false → dejar los enemies en el mapa
+    //   · Salida por golpe al boss: enemies se quedan activos
+    //   · Salida normal (todos muertos): ya no hay nada que hundir
+    // ─────────────────────────────────────────────────────────
+    _endEnemyWave(sinkEnemies) {
+        this._playAnim('mantle-idle');
+        this.spawnenemies      = 0;
+        this.spawnenemiestimer = 0;
+        this.attacktimer       = 20;
+        this._laughTimer       = 0;
+
+        if (sinkEnemies) {
+            this.scene.bossEnemies.getChildren()
+                .filter(e => !e.isDead)
+                .forEach(e => { if (e._enterDisappear) e._enterDisappear(); });
         }
     }
 
@@ -720,10 +743,10 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
         }
 
         if (this.dashtimer >= 30 && this.dashtimer % 4 === 0) {
-            if      (this.hp >= 5)          this._dashGravityAmt = (this._dashGravityAmt||0.5) + 0.03 * dt;
-            else if (this.losses < 7)        this._dashGravityAmt += 0.03  * dt;
-            else if (this.losses < 14)       this._dashGravityAmt += 0.023 * dt;
-            else                             this._dashGravityAmt += 0.017 * dt;
+            if      (this.hp >= 5)     this._dashGravityAmt = (this._dashGravityAmt||0.5) + 0.03 * dt;
+            else if (this.losses < 7)  this._dashGravityAmt += 0.03  * dt;
+            else if (this.losses < 14) this._dashGravityAmt += 0.023 * dt;
+            else                       this._dashGravityAmt += 0.017 * dt;
 
             new ShadowMantleGroundfire(this.scene, this.x, this.y);
         }
@@ -749,7 +772,7 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
 
         if (
             this.x < bounds.x + 32 || this.x > bounds.right ||
-            this.y > bounds.bottom || this.y < bounds.y - 100
+            this.y > bounds.bottom  || this.y < bounds.y - 100
         ) {
             this.dashtimer        = 0;
             this.dashcon          = 1;
@@ -782,8 +805,8 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
                     if (this.targetx === undefined) this.targetx = this.x;
                     if (this.targety === undefined) this.targety = this.y;
                 } else {
-                    this.targetx = 32  + Phaser.Math.Between(0, 9) * 32;
-                    this.targety = 48  + Phaser.Math.Between(0, 4) * 32;
+                    this.targetx = 32 + Phaser.Math.Between(0, 9) * 32;
+                    this.targety = 48 + Phaser.Math.Between(0, 4) * 32;
 
                     if (this.dashcon === 2) {
                         const player = this.scene.player;
@@ -814,10 +837,10 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
                 const spd = this.hp <= 13 ? 7 : 5;
                 let rand = Phaser.Math.Between(0, 3);
 
-                if (this.y + 16 < 80)        { this._vy =  spd; this._vx = 0; }
-                else if (this.y + 16 > 200)  { this._vy = -spd; this._vx = 0; }
-                else if (this.x + 16 < 60)   { this._vx =  spd; this._vy = 0; }
-                else if (this.x + 16 > 370)  { this._vx = -spd; this._vy = 0; }
+                if (this.y + 16 < 80)       { this._vy =  spd; this._vx = 0; }
+                else if (this.y + 16 > 200) { this._vy = -spd; this._vx = 0; }
+                else if (this.x + 16 < 60)  { this._vx =  spd; this._vy = 0; }
+                else if (this.x + 16 > 370) { this._vx = -spd; this._vy = 0; }
                 else {
                     if (rand === 0) { this._vx =  spd; this._vy = 0; }
                     if (rand === 1) { this._vy = -spd; this._vx = 0; }
@@ -834,10 +857,10 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
                 }
             }
 
-            if (this.x > W - 32)       { this._vx = -5; this._vy = 0; this.movetimer = 0; this.movecon = 0; }
-            if (this.x < 32)           { this._vx =  5; this._vy = 0; this.movetimer = 0; this.movecon = 0; }
-            if (this.y > H)            { this._vy = -5; this._vx = 0; this.movetimer = 0; this.movecon = 0; }
-            if (this.y < 0)            { this._vy =  5; this._vx = 0; this.movetimer = 0; this.movecon = 0; }
+            if (this.x > W - 32) { this._vx = -5; this._vy = 0; this.movetimer = 0; this.movecon = 0; }
+            if (this.x < 32)     { this._vx =  5; this._vy = 0; this.movetimer = 0; this.movecon = 0; }
+            if (this.y > H)      { this._vy = -5; this._vx = 0; this.movetimer = 0; this.movecon = 0; }
+            if (this.y < 0)      { this._vy =  5; this._vx = 0; this.movetimer = 0; this.movecon = 0; }
         }
 
         if (this.movestyle === 'path') {
@@ -871,7 +894,6 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
     }
 
     _hasEnemies() {
-        // Solo bloquea el attacktimer si spawnenemies está activo
         if (this.spawnenemies !== 1) return false;
         return this.scene.bossEnemies &&
                this.scene.bossEnemies.getChildren().some(e => !e.isDead);

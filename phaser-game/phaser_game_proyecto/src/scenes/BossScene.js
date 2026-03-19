@@ -19,14 +19,11 @@ export default class BossScene extends Phaser.Scene {
     // PRELOAD
     // ─────────────────────────────────────────────────────────
     preload() {
-        // ── Mapa ─────────────────────────────────────────────
         this.load.image('tiles_boss',         '/src/assets/tiles/tipe.png');
         this.load.tilemapTiledJSON('map_boss', '/src/assets/tiles/boss_room.json');
 
-        // ── Música ────────────────────────────────────────────
         this.load.audio('nightmare_boss', '/src/assets/sounds/nightmare_boss_heavy.ogg');
 
-        // ── Player ────────────────────────────────────────────
         this.load.audio('player_hit', '/src/assets/sounds/snd_hurt.wav');
         this.load.audio('snd_sword',  '/src/assets/sounds/snd_sword.wav');
         this.load.image('healthbar',  '/src/assets/sprites/spr_hp_bar.png');
@@ -40,67 +37,61 @@ export default class BossScene extends Phaser.Scene {
                 this.load.image(`${dir}Attack${i}`, `/src/assets/sprites/spr_kris_attack_${dir}/spr_kris_${i}.png`);
         });
 
-        // ── Boss sprites ──────────────────────────────────────
         const bossSprites = {
-            'mantle_idle':                 { path: 'spr_shadow_mantle_idle',                 frames: 6 },
-            'mantle_dash':                 { path: 'spr_shadow_mantle_dash',                 frames: 2 },
-            'mantle_onfire':               { path: 'spr_shadow_mantle_onfire',               frames: 2 },
-            'mantle_release':              { path: 'spr_shadow_mantle_release',              frames: 10 },
-            'mantle_release_abbreviated':  { path: 'spr_shadow_mantle_release_abbreviated',  frames: 5 },
-            'mantle_laugh':                { path: 'spr_shadow_mantle_laugh',                frames: 2 },
-            'mantle_side_r':               { path: 'spr_shadow_mantle_side_r',               frames: 3 },
-            'mantle_side_l':               { path: 'spr_shadow_mantle_side_l',               frames: 3 },
-            'mantle_fire':                 { path: 'spr_shadow_mantle_fire',                 frames: 3 },
-            'mantle_fire2':                { path: 'spr_shadow_mantle_fire2',                frames: 3 },
-            'mantle_imonfire':             { path: 'spr_board_imonfire',                     frames: 2 },
+            'mantle_idle':                { path: 'spr_shadow_mantle_idle',                frames: 6  },
+            'mantle_dash':                { path: 'spr_shadow_mantle_dash',                frames: 2  },
+            'mantle_onfire':              { path: 'spr_shadow_mantle_onfire',              frames: 2  },
+            'mantle_release':             { path: 'spr_shadow_mantle_release',             frames: 10 },
+            'mantle_release_abbreviated': { path: 'spr_shadow_mantle_release_abbreviated', frames: 5  },
+            'mantle_laugh':               { path: 'spr_shadow_mantle_laugh',               frames: 2  },
+            'mantle_side_r':              { path: 'spr_shadow_mantle_side_r',              frames: 3  },
+            'mantle_side_l':              { path: 'spr_shadow_mantle_side_l',              frames: 3  },
+            'mantle_fire':                { path: 'spr_shadow_mantle_fire',                frames: 3  },
+            'mantle_fire2':               { path: 'spr_shadow_mantle_fire2',               frames: 3  },
+            'mantle_imonfire':            { path: 'spr_board_imonfire',                    frames: 2  },
         };
 
         Object.entries(bossSprites).forEach(([key, { path, frames }]) => {
-            for (let i = 0; i < frames; i++) {
+            for (let i = 0; i < frames; i++)
                 this.load.image(`${key}_${i}`, `/src/assets/sprites/spr_boss/${path}/${path}_${i}.png`);
-            }
         });
 
-        // ── Proyectiles ───────────────────────────────────────
-        this.load.image('mantle_bomb_0',          '/src/assets/sprites/spr_smallbullet.png');
-        this.load.image('mantle_bomb_shadow',      '/src/assets/sprites/spr_smallbullet_outline.png');
-        this.load.image('mantle_cloud_0',          '/src/assets/sprites/spr_smallbullet.png');
-        this.load.image('mantle_cloud_1',          '/src/assets/sprites/spr_smallbullet.png');
-        this.load.image('mantle_cloud_2',          '/src/assets/sprites/spr_smallbullet.png');
-        this.load.image('mantle_cloud_3',          '/src/assets/sprites/spr_smallbullet.png');
-        this.load.image('mantle_cloud_bullet_0',   '/src/assets/sprites/spr_smallbullet.png');
+        this.load.image('mantle_bomb_0',        '/src/assets/sprites/spr_smallbullet.png');
+        this.load.image('mantle_bomb_shadow',    '/src/assets/sprites/spr_smallbullet_outline.png');
+        this.load.image('mantle_cloud_0',        '/src/assets/sprites/spr_smallbullet.png');
+        this.load.image('mantle_cloud_1',        '/src/assets/sprites/spr_smallbullet.png');
+        this.load.image('mantle_cloud_2',        '/src/assets/sprites/spr_smallbullet.png');
+        this.load.image('mantle_cloud_3',        '/src/assets/sprites/spr_smallbullet.png');
+        this.load.image('mantle_cloud_bullet_0', '/src/assets/sprites/spr_smallbullet.png');
         for (let i = 0; i < 2; i++)
             this.load.image(`mantle_cloud_projectile_${i}`,
                 `/src/assets/sprites/spr_boss/spr_shadow_mantle_cloud_projectile/spr_shadow_mantle_cloud_projectile_${i}.png`);
 
         // ── Enemy sprites ─────────────────────────────────────
         this.load.image('enemy_hurt', '/src/assets/sprites/spr_boss/spr___hurt.png');
-for (let i = 0; i < 10; i++)
-    this.load.image(`enemy_laugh_${i}`,
-        `/src/assets/sprites/spr_boss/spr___laugh/spr___laugh_${i}.png`);
-       // ── Enemy sprites ─────────────────────────────────────────
-for (let i = 0; i < 5; i++)
-    this.load.image(`enemy_appear_${i}`,
-        `/src/assets/sprites/spr_boss/spr___appear/spr___appear_${i}.png`);
+        for (let i = 0; i < 10; i++)
+            this.load.image(`enemy_laugh_${i}`,
+                `/src/assets/sprites/spr_boss/spr___laugh/spr___laugh_${i}.png`);
+        for (let i = 0; i < 5; i++)
+            this.load.image(`enemy_appear_${i}`,
+                `/src/assets/sprites/spr_boss/spr___appear/spr___appear_${i}.png`);
+        for (let i = 0; i < 4; i++)
+            this.load.image(`enemy_walk_${i}`,
+                `/src/assets/sprites/spr_boss/spr___/spr____${i}.png`);
 
-for (let i = 0; i < 4; i++)
-    this.load.image(`enemy_walk_${i}`,
-        `/src/assets/sprites/spr_boss/spr___/spr____${i}.png`);
-        // ── Sonidos del boss ──────────────────────────────────
-        this.load.audio('snd_board_bosshit',           '/src/assets/sounds/snd_boss/snd_board_bosshit.wav');
-        this.load.audio('snd_board_mantle_laugh_mid',  '/src/assets/sounds/snd_boss/snd_board_mantle_laugh_mid.wav');
-        this.load.audio('snd_board_mantle_dash_slow',  '/src/assets/sounds/snd_boss/snd_board_mantle_dash_slow.wav');
-        this.load.audio('snd_board_mantle_dash_fast',  '/src/assets/sounds/snd_boss/snd_board_mantle_dash_fast.wav');
-        this.load.audio('snd_board_throw',             '/src/assets/sounds/snd_boss/snd_board_throw.wav');
-        this.load.audio('snd_bump',                    '/src/assets/sounds/snd_boss/snd_bump.wav');
-        this.load.audio('snd_board_bomb',              '/src/assets/sounds/snd_boss/snd_board_bomb.wav');
-        this.load.audio('snd_board_summon',            '/src/assets/sounds/snd_boss/snd_board_summon.wav');
-        this.load.audio('snd_board_torch',             '/src/assets/sounds/snd_boss/snd_board_torch.wav');
-        this.load.audio('snd_board_torch_high',        '/src/assets/sounds/snd_boss/snd_board_torch_high.wav');
-        this.load.audio('snd_board_mantle_move',       '/src/assets/sounds/snd_boss/snd_board_mantle_move.wav');
-        this.load.audio('snd_wing',                    '/src/assets/sounds/snd_boss/snd_wing.wav');
+        this.load.audio('snd_board_bosshit',          '/src/assets/sounds/snd_boss/snd_board_bosshit.wav');
+        this.load.audio('snd_board_mantle_laugh_mid', '/src/assets/sounds/snd_boss/snd_board_mantle_laugh_mid.wav');
+        this.load.audio('snd_board_mantle_dash_slow', '/src/assets/sounds/snd_boss/snd_board_mantle_dash_slow.wav');
+        this.load.audio('snd_board_mantle_dash_fast', '/src/assets/sounds/snd_boss/snd_board_mantle_dash_fast.wav');
+        this.load.audio('snd_board_throw',            '/src/assets/sounds/snd_boss/snd_board_throw.wav');
+        this.load.audio('snd_bump',                   '/src/assets/sounds/snd_boss/snd_bump.wav');
+        this.load.audio('snd_board_bomb',             '/src/assets/sounds/snd_boss/snd_board_bomb.wav');
+        this.load.audio('snd_board_summon',           '/src/assets/sounds/snd_boss/snd_board_summon.wav');
+        this.load.audio('snd_board_torch',            '/src/assets/sounds/snd_boss/snd_board_torch.wav');
+        this.load.audio('snd_board_torch_high',       '/src/assets/sounds/snd_boss/snd_board_torch_high.wav');
+        this.load.audio('snd_board_mantle_move',      '/src/assets/sounds/snd_boss/snd_board_mantle_move.wav');
+        this.load.audio('snd_wing',                   '/src/assets/sounds/snd_boss/snd_wing.wav');
 
-        // ── HUD ───────────────────────────────────────────────
         for (let i = 0; i < 6; i++)
             this.load.image(`savepoint_${i}`, `/src/assets/sprites/spr_savepoint/spr_savepoint_${i}.png`);
     }
@@ -112,7 +103,6 @@ for (let i = 0; i < 4; i++)
         this.gameIsOver = false;
         this.segundos   = data?.segundos ?? 0;
 
-        // ── Mapa ─────────────────────────────────────────────
         try {
             this.map      = this.make.tilemap({ key: 'map_boss' });
             const tileset = this.map.addTilesetImage('tipe', 'tiles_boss');
@@ -129,60 +119,46 @@ for (let i = 0; i < 4; i++)
             this.map?.heightInPixels ?? 324
         );
 
-        // Mejora la detección de colisiones con tiles para velocidades altas
         this.physics.world.TILE_BIAS = 32;
 
         this._crearAnimaciones();
 
-        // ── Controles ─────────────────────────────────────────
         this.cursors = this.input.keyboard.createCursorKeys();
         this.keyZ    = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
+        this.keyF1   = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F1);
+        this.keyF2   = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F2);
+        this.keyF3   = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F3);
+        this.keyF4   = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F4);
+        this.keyF5   = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F5);
 
-        // ── Teclas de debug ───────────────────────────────────
-        this.keyF1 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F1);
-        this.keyF2 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F2);
-        this.keyF3 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F3);
-        this.keyF4 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F4);
-        this.keyF5 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F5);
-
-        // ── Jugador ───────────────────────────────────────────
-        const spawn   = data?.playerSpawn ?? { x: 216, y: 270 };
-        this.player   = new Player(this, spawn.x, spawn.y);
+        const spawn = data?.playerSpawn ?? { x: 216, y: 270 };
+        this.player = new Player(this, spawn.x, spawn.y);
         this.player.lastDamageTime = 0;
         if (data?.playerHP !== undefined) this.player.vida = data.playerHP;
 
-        // ── Grupos ────────────────────────────────────────────
-        this.bossBullets   = this.physics.add.group();
-        this.bossEnemies   = this.physics.add.group();
+        this.bossBullets     = this.physics.add.group();
+        this.bossEnemies     = this.physics.add.group();
         this.fireControllers = [];
 
-        // ── On-fire visual ────────────────────────────────────
         this._onFireImg = this.add.image(0, 0, 'mantle_imonfire_0')
             .setScale(2).setTint(0xff0000).setVisible(false);
 
-        // ── Boss ──────────────────────────────────────────────
         this.boss = new ShadowMantle(this, 216, 80);
 
-        // ── Sonidos ───────────────────────────────────────────
-        this.attackSound = this.sound.add('snd_sword',      { volume: 0.5 });
-        this.hitSound    = this.sound.add('player_hit');
-        this.bossHitSound= this.sound.add('snd_board_bosshit', { volume: 0.8 });
+        this.attackSound  = this.sound.add('snd_sword',         { volume: 0.5 });
+        this.hitSound     = this.sound.add('player_hit');
+        this.bossHitSound = this.sound.add('snd_board_bosshit', { volume: 0.8 });
 
-        // ── Música ────────────────────────────────────────────
         this.sound.getAll().forEach(s => { if (s.isPlaying) s.stop(); });
         this.music = this.sound.add('nightmare_boss', { loop: true, volume: 0.6 });
         this.music.play();
 
-        // ── Cámara ────────────────────────────────────────────
         this.cameras.main.setBounds(0, 0,
             this.map?.widthInPixels  ?? 432,
             this.map?.heightInPixels ?? 324
         );
 
-        // ── HUD ───────────────────────────────────────────────
         this._crearBossHUD();
-
-        // ── Colisiones ────────────────────────────────────────
         this._crearColisiones();
 
         this.events.on('boss-onfire', ({ active, x, y }) => {
@@ -190,13 +166,12 @@ for (let i = 0; i < 4; i++)
             if (active) this._onFireImg.setPosition(x, y - 16);
         });
 
-        this.events.on('boss-defeated', () => this._bossDefeated());
-        this.events.on('boss-phase-transition', () => {
+        this.events.on('boss-defeated',          () => this._bossDefeated());
+        this.events.on('boss-phase-transition',  () => {
             this.cameras.main.flash(500, 100, 0, 100);
         });
 
         this.cameras.main.fadeIn(500, 0, 0, 0);
-
         this._flamePathAngle = 0;
     }
 
@@ -214,7 +189,7 @@ for (let i = 0; i < 4; i++)
         if (Phaser.Input.Keyboard.JustDown(this.keyF3)) this._debugForcePhase(3);
         if (Phaser.Input.Keyboard.JustDown(this.keyF4)) this._debugForcePhase(4);
         if (Phaser.Input.Keyboard.JustDown(this.keyF5)) {
-            console.log(`[DEBUG] hp:${b.hp.toFixed(1)} phase:${b.phase} dashcon:${b.dashcon} burstwavecon:${b.burstwavecon} flamewavecon:${b.flamewavecon} spawnenemies:${b.spawnenemies} phasetransitioncon:${b.phasetransitioncon} attacktimer:${b.attacktimer} movestyle:${b.movestyle}`);
+            console.log(`[DEBUG] hp:${b.hp.toFixed(1)} phase:${b.phase} dashcon:${b.dashcon} burstwavecon:${b.burstwavecon} flamewavecon:${b.flamewavecon} spawnenemies:${b.spawnenemies} phasetransitioncon:${b.phasetransitioncon} attacktimer:${b.attacktimer} movestyle:${b.movestyle} hitsduringenemies:${b.hitsduringenemies}`);
         }
 
         if (Phaser.Input.Keyboard.JustDown(this.keyZ)) {
@@ -233,10 +208,6 @@ for (let i = 0; i < 4; i++)
             if (e.actualizar) e.actualizar(delta);
         });
 
-        // ── Comprobación manual: ataque del jugador vs enemies ─
-        // Se hace aquí (no solo por overlap de Phaser) para cubrir
-        // el caso en que el jugador esté DENTRO del enemigo y el
-        // attackHitbox no solape por estar posicionado delante.
         if (this.player.isAttacking) {
             this._checkSwordVsEnemies();
         }
@@ -255,16 +226,13 @@ for (let i = 0; i < 4; i++)
     }
 
     // ─────────────────────────────────────────────────────────
-    // ATAQUE DE ESPADA VS ENEMIES — comprobación manual
-    // Cubre tanto el attackHitbox delante del jugador como
-    // el propio cuerpo del jugador, para que funcione aunque
-    // esté dentro del enemigo.
+    // ATAQUE DE ESPADA VS ENEMIES
+    // NO incrementa hitsduringenemies — ese contador solo sube
+    // cuando el jugador golpea al boss directamente (takeDamage)
     // ─────────────────────────────────────────────────────────
     _checkSwordVsEnemies() {
-        // Zona de detección: unión del attackHitbox + el cuerpo del jugador
         const player = this.player;
 
-        // Bounds del hitbox de ataque (ya posicionado delante)
         const hb = player.attackHitbox;
         const hbBounds = new Phaser.Geom.Rectangle(
             hb.x - hb.width  / 2,
@@ -273,15 +241,13 @@ for (let i = 0; i < 4; i++)
             hb.height
         );
 
-        // Bounds del propio jugador (para cuando está dentro del enemy)
         const pBounds = player.getBounds();
 
         this.bossEnemies.getChildren().forEach(enemy => {
             if (!enemy.activeHitbox || enemy.isDead) return;
-            if (enemy._hurttimer > 0) return; // ya recibió golpe, en iframes
+            if (enemy._hurttimer > 0) return;
 
             const eBounds = enemy.getBounds();
-
             const hitByHitbox = Phaser.Geom.Intersects.RectangleToRectangle(hbBounds, eBounds);
             const hitByBody   = Phaser.Geom.Intersects.RectangleToRectangle(pBounds,  eBounds);
 
@@ -289,14 +255,14 @@ for (let i = 0; i < 4; i++)
                 if (enemy.takeHit) {
                     enemy.takeHit(this._dirToIndex(player.lastDir));
                     this.bossHitSound.play();
-                    this.boss.hitsduringenemies++;
+                    // ← NO incrementar hitsduringenemies aquí
                 }
             }
         });
     }
 
     // ─────────────────────────────────────────────────────────
-    // KNOCKBACK — respeta colisiones con paredes
+    // KNOCKBACK
     // ─────────────────────────────────────────────────────────
     _applyKnockback(player, sourceX, sourceY) {
         const KNOCKBACK_SPEED    = 280;
@@ -324,7 +290,8 @@ for (let i = 0; i < 4; i++)
     // ─────────────────────────────────────────────────────────
     _crearColisiones() {
         if (this.wallsLayer) {
-            this.physics.add.collider(this.player, this.wallsLayer);
+            this.physics.add.collider(this.player,      this.wallsLayer);
+            this.physics.add.collider(this.bossEnemies, this.wallsLayer);
         }
 
         // Jugador ← proyectiles del boss
@@ -359,7 +326,7 @@ for (let i = 0; i < 4; i++)
             }
         });
 
-        // Jugador ← enemigos spawneados
+        // Jugador ← enemies spawneados
         this.physics.add.overlap(this.player, this.bossEnemies, (player, enemy) => {
             if (!enemy.activeHitbox) return;
             const ahora = this.time.now;
@@ -372,6 +339,8 @@ for (let i = 0; i < 4; i++)
         });
 
         // Ataque del jugador → boss
+        // hitsduringenemies se incrementa AQUÍ dentro de boss.takeDamage()
+        // cuando spawnenemies === 1
         this.physics.add.overlap(this.player.attackHitbox, this.boss, () => {
             if (this.player.isAttacking) {
                 this.boss.takeDamage();
@@ -379,8 +348,8 @@ for (let i = 0; i < 4; i++)
             }
         });
 
-        // Ataque del jugador → enemies (overlap de Phaser como respaldo)
-        // La comprobación principal es _checkSwordVsEnemies() en update()
+        // Ataque del jugador → enemies (respaldo al _checkSwordVsEnemies)
+        // NO incrementa hitsduringenemies — solo mata al enemy
         this.physics.add.overlap(this.player.attackHitbox, this.bossEnemies, (hitbox, enemy) => {
             if (!this.player.isAttacking) return;
             if (!enemy.activeHitbox || enemy.isDead) return;
@@ -388,7 +357,7 @@ for (let i = 0; i < 4; i++)
             if (enemy.takeHit) {
                 enemy.takeHit(this._dirToIndex(this.player.lastDir));
                 this.bossHitSound.play();
-                this.boss.hitsduringenemies++;
+                // ← NO incrementar hitsduringenemies aquí
             }
         });
     }
@@ -398,7 +367,7 @@ for (let i = 0; i < 4; i++)
     }
 
     // ─────────────────────────────────────────────────────────
-    // HUD — Barra de vida del boss
+    // HUD
     // ─────────────────────────────────────────────────────────
     _crearBossHUD() {
         const W = this.cameras.main.width;
@@ -450,7 +419,7 @@ for (let i = 0; i < 4; i++)
         );
 
         makeAnim('mantle-idle',
-            Array.from({length:6}, (_,i) => `mantle_idle_${i}`), 20);
+            Array.from({length:6},  (_,i) => `mantle_idle_${i}`), 20);
         makeAnim('mantle-dash',
             ['mantle_dash_0', 'mantle_dash_1'], 30);
         makeAnim('mantle-onfire',
@@ -462,9 +431,9 @@ for (let i = 0; i < 4; i++)
         makeAnim('mantle-laugh',
             ['mantle_laugh_0', 'mantle_laugh_1'], 6);
         makeAnim('mantle-side-r',
-            Array.from({length:3}, (_,i) => `mantle_side_r_${i}`), 20);
+            Array.from({length:3},  (_,i) => `mantle_side_r_${i}`), 20);
         makeAnim('mantle-side-l',
-            Array.from({length:3}, (_,i) => `mantle_side_l_${i}`), 20);
+            Array.from({length:3},  (_,i) => `mantle_side_l_${i}`), 20);
     }
 
     // ─────────────────────────────────────────────────────────
@@ -510,7 +479,7 @@ for (let i = 0; i < 4; i++)
     }
 
     // ─────────────────────────────────────────────────────────
-    // DEBUG — forzar fase (F1-F4) / imprimir estado (F5)
+    // DEBUG
     // ─────────────────────────────────────────────────────────
     _debugForcePhase(phase) {
         const b = this.boss;
