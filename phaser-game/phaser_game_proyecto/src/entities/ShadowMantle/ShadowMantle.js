@@ -599,8 +599,8 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
             if (t % 2 === 0 && t < 45) {
                 const rand = Phaser.Math.Between(0, 360);
                 this.scene.events.emit('boss-transition-particle', {
-                    x: this.x + 16 + Math.cos(Phaser.Math.DegToRad(rand)) * 42,
-                    y: this.y + 16 + Math.sin(Phaser.Math.DegToRad(rand)) * 42,
+                    x: this.x + Math.cos(Phaser.Math.DegToRad(rand)) * 42,
+                    y: this.y + Math.sin(Phaser.Math.DegToRad(rand)) * 42,
                 });
             }
 
@@ -609,7 +609,7 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
                 this._playAnim(anim);
             }
 
-            if (t === 42) {
+            if (t === 11) {
                 const fc = new ShadowMantleFireController(this.scene, this.x, this.y, 8, this);
                 this.scene.fireControllers.push(fc);
             }

@@ -171,6 +171,22 @@ export default class BossScene extends Phaser.Scene {
             this.cameras.main.flash(500, 100, 0, 100);
         });
 
+        // ── Partículas de fuego durante la intro de fase 4 ───
+        this.events.on('boss-transition-particle', ({ x, y }) => {
+            const particle = this.add.image(x, y, 'mantle_fire_0')
+                .setScale(1.5)
+                .setTint(0xff6600);
+
+            this.tweens.add({
+                targets  : particle,
+                alpha    : 0,
+                scaleX   : 0.2,
+                scaleY   : 0.2,
+                duration : 300,
+                onComplete: () => particle.destroy()
+            });
+        });
+
         // ── Candy al matar un enemy ───────────────────────────
         this.events.on('enemy-drop-candy', ({ x, y }) => {
             const candy = this.physics.add.sprite(x, y, 'spr_board_candy');
@@ -243,17 +259,10 @@ export default class BossScene extends Phaser.Scene {
 
     // ─────────────────────────────────────────────────────────
     // ATAQUE DE ESPADA VS ENEMIES
-    //
-    // Usa body bounds (no getBounds/sprite bounds) para que
-    // la detección respete las paredes igual que la física.
-    // getBounds() devuelve el rectángulo visual del sprite
-    // completo (incluye la espada en 32x16 / 16x32), lo que
-    // permite golpear a través de paredes.
     // ─────────────────────────────────────────────────────────
     _checkSwordVsEnemies() {
         const player = this.player;
 
-        // Body físico del hitbox de ataque
         const hb = player.attackHitbox;
         const hbBounds = new Phaser.Geom.Rectangle(
             hb.body.x,
@@ -262,7 +271,6 @@ export default class BossScene extends Phaser.Scene {
             hb.body.height
         );
 
-        // Body físico del jugador (16x16 fijo, no el sprite visual)
         const pb = player.body;
         const pBounds = new Phaser.Geom.Rectangle(
             pb.x, pb.y, pb.width, pb.height
@@ -272,7 +280,6 @@ export default class BossScene extends Phaser.Scene {
             if (!enemy.activeHitbox || enemy.isDead) return;
             if (enemy._hurttimer > 0) return;
 
-            // Body físico del enemy (no el sprite visual)
             const eb = enemy.body;
             const eBounds = new Phaser.Geom.Rectangle(
                 eb.x, eb.y, eb.width, eb.height
@@ -285,7 +292,6 @@ export default class BossScene extends Phaser.Scene {
                 if (enemy.takeHit) {
                     enemy.takeHit(this._dirToIndex(player.lastDir));
                     this.bossHitSound.play();
-                    // ← NO incrementar hitsduringenemies aquí
                 }
             }
         });
@@ -324,7 +330,6 @@ export default class BossScene extends Phaser.Scene {
             this.physics.add.collider(this.bossEnemies, this.wallsLayer);
         }
 
-        // Jugador ← proyectiles del boss
         this.physics.add.overlap(this.player, this.bossBullets, (player, bullet) => {
             const hasActiveHitbox =
                 bullet.activeHitbox !== undefined ? bullet.activeHitbox : true;
@@ -345,7 +350,6 @@ export default class BossScene extends Phaser.Scene {
             }
         });
 
-        // Jugador ← contacto con boss
         this.physics.add.overlap(this.player, this.boss, (player, boss) => {
             const ahora = this.time.now;
             if (ahora - player.lastDamageTime > 1000) {
@@ -356,7 +360,6 @@ export default class BossScene extends Phaser.Scene {
             }
         });
 
-        // Jugador ← enemies spawneados
         this.physics.add.overlap(this.player, this.bossEnemies, (player, enemy) => {
             if (!enemy.activeHitbox) return;
             const ahora = this.time.now;
@@ -368,9 +371,6 @@ export default class BossScene extends Phaser.Scene {
             }
         });
 
-        // Ataque del jugador → boss
-        // hitsduringenemies sube dentro de boss.takeDamage()
-        // cuando spawnenemies === 1
         this.physics.add.overlap(this.player.attackHitbox, this.boss, () => {
             if (this.player.isAttacking) {
                 this.boss.takeDamage();
@@ -378,9 +378,6 @@ export default class BossScene extends Phaser.Scene {
             }
         });
 
-        // Ataque del jugador → enemies (respaldo a _checkSwordVsEnemies)
-        // También usa body bounds implícitamente a través del sistema
-        // de física de Phaser — NO incrementa hitsduringenemies
         this.physics.add.overlap(this.player.attackHitbox, this.bossEnemies, (hitbox, enemy) => {
             if (!this.player.isAttacking) return;
             if (!enemy.activeHitbox || enemy.isDead) return;
@@ -388,7 +385,6 @@ export default class BossScene extends Phaser.Scene {
             if (enemy.takeHit) {
                 enemy.takeHit(this._dirToIndex(this.player.lastDir));
                 this.bossHitSound.play();
-                // ← NO incrementar hitsduringenemies aquí
             }
         });
     }
