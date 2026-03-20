@@ -13,7 +13,8 @@ export class ShadowMantleFire3 extends Phaser.Physics.Arcade.Sprite {
         scene.physics.add.existing(this);
 
         this.body.allowGravity = false;
-        this.setScale(1);
+        this.setScale(2);
+           
 
         const dir  = opts.direction ?? 0;
         const spd  = opts.speed     ?? 2;
@@ -27,8 +28,8 @@ export class ShadowMantleFire3 extends Phaser.Physics.Arcade.Sprite {
         this.activeHitbox = false;
         this._activetimer = opts.activetimer ?? 20;
         this.damage       = 1;
-        this.destroyonhit = false; // No se destruye al tocar al jugador
-        this._hitCooldown = 0;     // Frames de invencibilidad tras golpear
+        this.destroyonhit = false;
+        this._hitCooldown = 0;
         this.isDead       = false;
 
         this._dirRad  = Phaser.Math.DegToRad(dir);
@@ -73,8 +74,9 @@ export class ShadowMantleFire3 extends Phaser.Physics.Arcade.Sprite {
             this.activeHitbox = true;
         }
 
-        this.body.velocity.x += Math.cos(this._gravRad) * this._gravity * 15;
-        this.body.velocity.y += Math.sin(this._gravRad) * this._gravity * 15;
+        // Gravedad: GML corre a 30fps, Phaser a 60fps → multiplicador 7.5 en vez de 15
+        this.body.velocity.x += Math.cos(this._gravRad) * this._gravity * 7.5;
+        this.body.velocity.y += Math.sin(this._gravRad) * this._gravity * 7.5;
 
         const frame = Math.floor((this._timer * 0.125) % 3);
         this.setTexture(`mantle_fire_${frame}`);
@@ -86,7 +88,6 @@ export class ShadowMantleFire3 extends Phaser.Physics.Arcade.Sprite {
     }
 
     onHit() {
-        // No destruir — pausar hitbox 20 frames
         this._hitCooldown = 20;
         this.activeHitbox = false;
     }
@@ -109,7 +110,7 @@ export class ShadowMantleGroundfire extends Phaser.Physics.Arcade.Sprite {
         this._timer       = 0;
         this.activeHitbox = true;
         this.damage       = 2;
-        this.destroyonhit = false; // No se destruye al tocar al jugador
+        this.destroyonhit = false;
         this._hitCooldown = 0;
         this.isDead       = false;
 
@@ -121,7 +122,6 @@ export class ShadowMantleGroundfire extends Phaser.Physics.Arcade.Sprite {
 
         this._timer++;
 
-        // Bajar cooldown de hit
         if (this._hitCooldown > 0) {
             this._hitCooldown--;
             if (this._hitCooldown === 0) this.activeHitbox = true;
@@ -168,7 +168,7 @@ export class ShadowMantleClone extends Phaser.Physics.Arcade.Sprite {
         this._dashcon         = 1;
         this.isDead           = false;
         this.damage           = 2;
-        this.destroyonhit     = false; // No se destruye al tocar al jugador
+        this.destroyonhit     = false;
         this._hitCooldown     = 0;
 
         this._onFireSprite = onFireSprite;
@@ -184,7 +184,6 @@ export class ShadowMantleClone extends Phaser.Physics.Arcade.Sprite {
         const bounds  = this.scene.physics.world.bounds;
         const losses  = this.scene.registry.get('shadow_mantle_losses') ?? 0;
 
-        // Bajar cooldown de hit
         if (this._hitCooldown > 0) {
             this._hitCooldown--;
         }
@@ -267,15 +266,12 @@ export class ShadowMantleEnemySpawn {
         const player  = scene.player;
         const TILE    = 36;
 
-        // Leer celdas libres directamente del tilemap en runtime
-        // En la capa walls: índice -1 o 0 = libre, cualquier otro = pared
         const FREE_CELLS = [];
         if (scene.wallsLayer) {
             const layer = scene.wallsLayer.layer;
             for (let row = 2; row <= 7; row++) {
                 for (let col = 1; col <= 10; col++) {
                     const tile = layer.data[row][col];
-                    // tile.index -1 = vacío, 0 = libre en Tiled (valor 0 en JSON)
                     if (tile && tile.index <= 0) {
                         FREE_CELLS.push({
                             x: col * TILE,
@@ -297,7 +293,6 @@ export class ShadowMantleEnemySpawn {
 
         const pos = candidates[Phaser.Math.Between(0, candidates.length - 1)];
 
-        // El boss se mueve exactamente donde spawnea el enemy (misma pos top-left)
         this._boss.targetx = pos.x;
         this._boss.targety = pos.y;
         this._boss.movestyle = 'to point and stop';
