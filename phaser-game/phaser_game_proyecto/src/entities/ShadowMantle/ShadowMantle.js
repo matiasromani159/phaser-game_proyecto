@@ -96,6 +96,7 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
         this.scene.sound.play('snd_board_bosshit');
 
         this.hurttimer = 8;
+        this.scene.cameras.main.shake(100, 0.005);
 
         if (this.phasetransitioncon === 1) {
             this.hp -= 0.2;
