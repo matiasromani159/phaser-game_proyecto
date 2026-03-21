@@ -29,6 +29,9 @@ export default class BossScene extends Phaser.Scene {
         this.load.image('healthbar',  '/src/assets/sprites/spr_hp_bar.png');
         this.load.image('spr_board_candy', '/src/assets/sprites/spr_board_candy.png');
 
+        // ── Sonido al recoger candy ───────────────────────────
+        this.load.audio('snd_power', '/src/assets/sounds/snd_power.wav');
+
         const dirs = ['down', 'up', 'left', 'right'];
         dirs.forEach(dir => {
             for (let i = 0; i < 2; i++)
@@ -166,10 +169,18 @@ export default class BossScene extends Phaser.Scene {
             if (active) this._onFireImg.setPosition(x, y - 16);
         });
 
-        this.events.on('boss-defeated',         () => this._bossDefeated());
-        this.events.on('boss-phase-transition', () => {
+        this.events.on('boss-defeated', () => this._bossDefeated());
+        this.events.on('boss-phase-transition', ({ phase }) => {
             this.cameras.main.flash(500, 100, 0, 100);
+            this._iniciarTransicionFase(phase);
         });
+
+        // Colores de tint por fase. El tint en Phaser es multiplicativo:
+        // 0xffffff = sin cambio, más oscuro = más aplasta la textura.
+        // Los colores GML originales son demasiado oscuros, así que se
+        // aclaran ~50% hacia blanco para que los tiles sigan siendo legibles.
+        this._phaseColors = [0xA85854, 0x9A6E6A, 0x8A6488, 0xB04020];
+        this._crearOverlayGrid();
 
         // ── Partículas de fuego durante la intro de fase 4 ───
         this.events.on('boss-transition-particle', ({ x, y }) => {
@@ -189,16 +200,73 @@ export default class BossScene extends Phaser.Scene {
 
         // ── Candy al matar un enemy ───────────────────────────
         this.events.on('enemy-drop-candy', ({ x, y }) => {
-            const candy = this.physics.add.sprite(x, y, 'spr_board_candy');
+            const TILE = 36;
+
+            // Busca el tile de suelo libre más cercano (espiral BFS)
+            const _findFreeTile = (originX, originY) => {
+                const col0 = Math.floor(originX / TILE);
+                const row0 = Math.floor(originY / TILE);
+
+                for (let radius = 0; radius <= 4; radius++) {
+                    for (let dc = -radius; dc <= radius; dc++) {
+                        for (let dr = -radius; dr <= radius; dr++) {
+                            if (Math.abs(dc) !== radius && Math.abs(dr) !== radius) continue;
+                            const col  = col0 + dc;
+                            const row  = row0 + dr;
+                            const wall = this.wallsLayer?.getTileAt(col, row);
+                            if (wall && wall.collides) continue;
+                            return {
+                                x: col * TILE + TILE / 2,
+                                y: row * TILE + TILE / 2,
+                            };
+                        }
+                    }
+                }
+                // Fallback: posición original snapeada
+                return {
+                    x: col0 * TILE + TILE / 2,
+                    y: row0 * TILE + TILE / 2,
+                };
+            };
+
+            const { x: snappedX, y: snappedY } = _findFreeTile(x, y);
+
+            const candy = this.physics.add.sprite(snappedX, snappedY, 'spr_board_candy');
             candy.body.allowGravity = false;
             candy.body.setImmovable(true);
             candy.setScale(2);
             candy.setTint(0x00ff88);
 
-            this.physics.add.overlap(this.player, candy, () => {
-                if (!this.player || this.player.isDead) return;
+            // Parpadeo: empieza a los 4s, dura ~1s con yoyo ×4 (~4s de parpadeo)
+            const blinkTimer = this.time.delayedCall(4000, () => {
+                if (!candy.active) return;
+                this.tweens.add({
+                    targets  : candy,
+                    alpha    : 0,
+                    duration : 200,
+                    ease     : 'Linear',
+                    yoyo     : true,
+                    repeat   : 9,           // 10 ciclos × 400ms = ~4s de parpadeo
+                    onComplete: () => {
+                        if (candy.active) candy.destroy();
+                    }
+                });
+            });
+
+            // Destrucción definitiva a los 8s (4s espera + 4s parpadeo)
+            const killTimer = this.time.delayedCall(8000, () => {
+                if (candy.active) candy.destroy();
+            });
+
+            // El jugador lo recoge
+            const overlap = this.physics.add.overlap(this.player, candy, () => {
+                if (!this.player || this.player.isDead || !candy.active) return;
                 this.player.vida = Math.min(this.player.vidaMax, this.player.vida + 10);
                 this.player.drawHealthBar();
+                this.sound.play('snd_power', { volume: 0.7 });
+                blinkTimer.remove();
+                killTimer.remove();
+                this.physics.world.removeCollider(overlap);
                 candy.destroy();
             });
         });
@@ -464,6 +532,53 @@ export default class BossScene extends Phaser.Scene {
     }
 
     // ─────────────────────────────────────────────────────────
+    // TINT DE FASE — tiñe los tiles del groundLayer directamente
+    // ─────────────────────────────────────────────────────────
+
+    // Aplica el tint de fase 1 a todos los tiles al inicio
+    _crearOverlayGrid() {
+        this._aplicarTintFase(1);
+    }
+
+    // Tinta un tile individual en ambas capas
+    _tintTile(col, row, color) {
+        const tg = this.groundLayer?.getTileAt(col, row);
+        if (tg) tg.tint = color;
+        const tw = this.wallsLayer?.getTileAt(col, row);
+        if (tw) tw.tint = color;
+    }
+
+    // Aplica el tint a todos los tiles a la vez (sin ola)
+    _aplicarTintFase(phase) {
+        const COLS  = 12, ROWS = 9;
+        const color = this._phaseColors[Math.min(phase - 1, 3)];
+        for (let col = 0; col < COLS; col++)
+            for (let row = 0; row < ROWS; row++)
+                this._tintTile(col, row, color);
+    }
+
+    // Lanza la ola diagonal de tint sobre ground y walls.
+    // Mismo patrón que el GML: diagonales donde col + row === d,
+    // avanzando de arriba-izquierda a abajo-derecha.
+    _iniciarTransicionFase(newPhase) {
+        const COLS     = 12;
+        const ROWS     = 9;
+        const STEP_MS  = 60;
+        const newColor = this._phaseColors[Math.min(newPhase - 1, 3)];
+        const maxDiag  = (COLS - 1) + (ROWS - 1);
+
+        for (let d = 0; d <= maxDiag; d++) {
+            this.time.delayedCall(d * STEP_MS, () => {
+                for (let col = 0; col < COLS; col++) {
+                    const row = d - col;
+                    if (row < 0 || row >= ROWS) continue;
+                    this._tintTile(col, row, newColor);
+                }
+            });
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────
     // HELPERS
     // ─────────────────────────────────────────────────────────
     destroyFireControllers() {
@@ -538,4 +653,4 @@ export default class BossScene extends Phaser.Scene {
 
         console.log(`[DEBUG] Forzando fase ${phase} — hp: ${b.hp}`);
     }
-}
+}   

@@ -48,6 +48,9 @@ export default class BaseGameScene extends Phaser.Scene {
 
         this.load.image('spr_board_candy', '/src/assets/sprites/spr_board_candy.png');
 
+        // ── Sonido al recoger candy / health drop ────────────
+        this.load.audio('snd_power', '/src/assets/sounds/snd_power.wav');
+
         // Sonidos del sistema de diálogo
         this.load.audio('snd_board_text_main',     '/src/assets/sounds/snd_board_text_main.wav');
         this.load.audio('snd_board_text_main_end', '/src/assets/sounds/snd_board_text_main_end.wav');
@@ -207,7 +210,6 @@ export default class BaseGameScene extends Phaser.Scene {
         this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
         this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
 
-        // Mejora la detección con tiles para velocidades altas (knockback)
         this.physics.world.TILE_BIAS = 32;
 
         if (!data?.fromGameOver) {
@@ -264,9 +266,7 @@ export default class BaseGameScene extends Phaser.Scene {
     }
 
     // ─────────────────────────────────────────────
-    // KNOCKBACK — respeta colisiones con paredes
-    // Usa isKnockedBack para que player.update() no
-    // cancele la velocidad mientras dura el empuje.
+    // KNOCKBACK
     // ─────────────────────────────────────────────
     _applyKnockback(player, sourceX, sourceY) {
         const KNOCKBACK_SPEED    = 280;
@@ -457,7 +457,10 @@ export default class BaseGameScene extends Phaser.Scene {
         this.physics.add.overlap(
             this.player,
             this.healthDrops,
-            (player, drop) => drop.collect(player),
+            (player, drop) => {
+                drop.collect(player);
+                this.sound.play('snd_power', { volume: 0.7 });
+            },
             null,
             this
         );

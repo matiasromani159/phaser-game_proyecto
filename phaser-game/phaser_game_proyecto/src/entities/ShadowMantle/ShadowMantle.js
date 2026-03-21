@@ -565,7 +565,7 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
 
             if (t === 25) {
                 this.scene.sound.play('snd_board_mantle_move', { detune: -500 });
-                this.scene.events.emit('boss-phase-transition');
+           this.scene.events.emit('boss-phase-transition', { phase: this.phase });
             }
 
             if (t === 46 && this.phase === 4) {
