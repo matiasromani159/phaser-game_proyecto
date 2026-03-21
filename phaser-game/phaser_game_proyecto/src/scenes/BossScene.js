@@ -162,7 +162,7 @@ export default class BossScene extends Phaser.Scene {
         this._crearBossHUD();
         this._crearColisiones();
 
-        this.dialogue = new DialogueSystem(this, { fontSize: 16, fontFamily: 'TennaGlyphs' });
+       this.dialogue = new DialogueSystem(this, { fontSize: 16, fontFamily: 'PrStart' });
 
         this.events.on('boss-onfire', ({ active, x, y }) => {
             this._onFireImg.setVisible(active);
@@ -508,15 +508,15 @@ export default class BossScene extends Phaser.Scene {
 
     _mostrarDialogosOutro() {
         this.dialogue.show([
-            "Eso! That's what I wanted to see!/",
-            "Flickering red, like pretty little flames.../",
-            "Your eyes can't hide it, Kris. Without play.../",
-            "The knife grows dull./",
-            "Haha.. well, enough of that! We both have work to do!/",
+            "¡Sí!^1 ¡Eso es justo lo que quería ver!/",
+            "Un resplandor rojo^1, bailando como hermosas llamas.../",
+            "Tus ojos no pueden ocultarlo^1, Kris^1. Sin usarlo.../",
+            "La mano se oxida./",
+            "Ja..^1 ¡bueno, ya está bien! Ambos tenemos trabajo que hacer!/",
         ], () => {
             this.dialogue.show([
-                "So if you want this MANTLE, hurry up and take it.../",
-                "If you can reach it!/%",
+                "Así que si quieres el titulo^1, date prisa y ve a por él.../",
+                "¡Si es que puedes alcanzarlo!/%",
             ], () => {
                 this.time.delayedCall(300, () => {
                     this.sound.play('snd_wing', { volume: 0.8 });
@@ -643,7 +643,7 @@ export default class BossScene extends Phaser.Scene {
             if (!hasActiveHitbox) return;
             const ahora = this.time.now;
             if (ahora - player.lastDamageTime > 1000) {
-                player.takeDamage(bullet.damage ?? 2);
+                player.takeDamage(bullet.damage ?? 10);
                 player.lastDamageTime = ahora;
                 this.hitSound.play();
                 this._applyKnockback(player, bullet.x, bullet.y);
@@ -656,7 +656,7 @@ export default class BossScene extends Phaser.Scene {
             if (this._introActiva || this._outroActivo) return;
             const ahora = this.time.now;
             if (ahora - player.lastDamageTime > 1000) {
-                player.takeDamage(2);
+                player.takeDamage(10);
                 player.lastDamageTime = ahora;
                 this.hitSound.play();
                 this._applyKnockback(player, boss.x, boss.y);
@@ -667,7 +667,7 @@ export default class BossScene extends Phaser.Scene {
             if (!enemy.activeHitbox || this._introActiva || this._outroActivo) return;
             const ahora = this.time.now;
             if (ahora - player.lastDamageTime > 1000) {
-                player.takeDamage(enemy.damage ?? 2);
+                player.takeDamage(enemy.damage ?? 10);
                 player.lastDamageTime = ahora;
                 this.hitSound.play();
                 this._applyKnockback(player, enemy.x, enemy.y);

@@ -26,7 +26,7 @@ export class ShadowMantleFire3 extends Phaser.Physics.Arcade.Sprite {
         this._timer       = 0;
         this.activeHitbox = false;
         this._activetimer = opts.activetimer ?? 20;
-        this.damage       = 1;
+        this.damage       = 10;
         this.destroyonhit = false;
         this._hitCooldown = 0;
         this.isDead       = false;
@@ -104,7 +104,7 @@ export class ShadowMantleGroundfire extends Phaser.Physics.Arcade.Sprite {
 
         this._timer       = 0;
         this.activeHitbox = true;
-        this.damage       = 2;
+        this.damage       = 5;
         this.destroyonhit = false;
         this._hitCooldown = 0;
         this.isDead       = false;
@@ -162,7 +162,7 @@ export class ShadowMantleClone extends Phaser.Physics.Arcade.Sprite {
         this._dashtimer       = 0;
         this._dashcon         = 1;
         this.isDead           = false;
-        this.damage           = 2;
+        this.damage           = 10;
         this.destroyonhit     = false;
         this._hitCooldown     = 0;
 
