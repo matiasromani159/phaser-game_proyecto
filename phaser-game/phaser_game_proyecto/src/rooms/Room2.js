@@ -25,6 +25,10 @@ export default class Room2 extends BaseGameScene {
     izquierda: null,
     derecha:   null,
 }
+
         };
     }
+    getDialogueConfig() {
+    return {}; // usa los defaults de DialogueSystem (UndertaleFont, fontSize 16)
+}
 }

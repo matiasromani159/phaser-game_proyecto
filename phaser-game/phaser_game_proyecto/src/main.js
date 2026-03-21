@@ -24,8 +24,31 @@ const config = {
     roundPixels: true   // evita temblor de sprites
 };
 
-
-// al final del archivo, reemplaza la última línea
-window.game = new Phaser.Game(config);
-// main.js — añade esta línea
-
+async function init() {
+    try {
+        await Promise.all([
+            document.fonts.load('16px UndertaleFont'),
+            document.fonts.load('16px "TennaGlyphs"'),
+        ]);
+    } catch (e) {
+        console.warn('[fonts] Error cargando fuentes, arrancando igualmente.', e);
+    }
+ 
+    // Forzar al navegador a renderizar ambas fuentes antes de que
+    // Phaser cree el canvas — sin esto el canvas puede cachear
+    // el fallback del sistema aunque el await haya terminado.
+    const primer = document.createElement('div');
+    primer.style.cssText = 'position:absolute;left:-9999px;opacity:0;font-size:16px;';
+    primer.innerHTML =
+        '<span style="font-family:UndertaleFont">.</span>' +
+        '<span style="font-family:TennaGlyphs">.</span>';
+    document.body.appendChild(primer);
+    // Un frame de espera para que el layout engine lo procese
+    await new Promise(r => requestAnimationFrame(r));
+    document.body.removeChild(primer);
+ 
+    window.game = new Phaser.Game(config);
+}
+ 
+init();
+ 

@@ -33,6 +33,9 @@ export default class Room1 extends BaseGameScene {
             }
         };
     }
+    getDialogueConfig() {
+    return {}; // usa los defaults de DialogueSystem (UndertaleFont, fontSize 16)
+}
 
     create(data) {
         super.create(data);

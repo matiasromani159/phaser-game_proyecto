@@ -1,3 +1,5 @@
+import GameState from '../GameState.js'; // ← ajusta la ruta si es necesario
+
 export default class Player extends Phaser.Physics.Arcade.Sprite {
 
     constructor(scene, x, y) {
@@ -6,16 +8,17 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         scene.add.existing(this);
         scene.physics.add.existing(this);
 
-        this.vida    = 100;
-        this.vidaMax = 100;
+        // ── Vida leída desde GameState (persiste entre escenas) ──
+        this.vidaMax = GameState.playerHPMax;
+        this.vida    = GameState.playerHP;
 
         // Barra de vida
-        this.barra = scene.add.graphics();
-        this.barra.setScrollFactor(0);
-        this.barra.setDepth(1);
-        this.healthBarSprite = scene.add
-            .sprite(20, 20, 'healthbar')
-            .setOrigin(0, 0).setScrollFactor(0).setScale(2).setDepth(0);
+      this.barra = scene.add.graphics();
+this.barra.setScrollFactor(0);
+this.barra.setDepth(100);                                          // ← subir
+this.healthBarSprite = scene.add
+    .sprite(20, 20, 'healthbar')
+    .setOrigin(0, 0).setScrollFactor(0).setScale(2).setDepth(99);
 
         this.speed   = 150;
         this.lastDir = 'down';
@@ -56,22 +59,12 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
 
     // ─────────────────────────────────────────────────────────
     // BODY FIJO POR DIRECCIÓN
-    //
-    // Phaser posiciona el body desde el top-left del sprite.
-    // El sprite idle es 16x16 → Kris siempre ocupa esos 16x16.
-    // En los sprites de ataque Kris ocupa una mitad del canvas:
-    //
-    //   right 32x16 origin(0.25,0.5): Kris en x[0..15]  → offset (0,  0)
-    //   left  32x16 origin(0.75,0.5): Kris en x[16..31] → offset (16, 0)
-    //   down  16x32 origin(0.5,0.25): Kris en y[0..15]  → offset (0,  0)
-    //   up    16x32 origin(0.5,0.75): Kris en y[16..31] → offset (0,  16)
     // ─────────────────────────────────────────────────────────
     _setBodyForDir(dir) {
         switch (dir) {
             case 'left':  this.setBodySize(16, 16); this.setOffset(16, 0);  break;
             case 'up':    this.setBodySize(16, 16); this.setOffset(0,  16); break;
             default:      this.setBodySize(16, 16); this.setOffset(0,  0);  break;
-            // 'right', 'down', 'idle' → offset (0, 0)
         }
     }
 
@@ -157,15 +150,12 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
 
         this._setAttackTexture(this.swordfacing, frameIdx);
 
-        // Crear hitbox en frame 12 (= GML frame 6)
-       // Crear hitbox en frame 12 solo si no hay pared delante
-if (this.swordbuffer === 12) {
-    if (!this._hayParedEnfrente(this.swordfacing)) {
-        this._activarHitbox(this.swordfacing);
-    }
-}
-
-
+        // Crear hitbox en frame 12 solo si no hay pared delante
+        if (this.swordbuffer === 12) {
+            if (!this._hayParedEnfrente(this.swordfacing)) {
+                this._activarHitbox(this.swordfacing);
+            }
+        }
 
         if (canRedirect && this.swordbuffer !== 12) {
             this._moverHitbox(this.swordfacing);
@@ -181,24 +171,24 @@ if (this.swordbuffer === 12) {
     }
 
     _hayParedEnfrente(dir) {
-    if (!this.scene.wallsLayer) return false;
+        if (!this.scene.wallsLayer) return false;
 
-    const DIST = 20; // px hacia delante para comprobar
-    const offsets = {
-        right: { x:  DIST, y: 0     },
-        left:  { x: -DIST, y: 0     },
-        down:  { x: 0,     y:  DIST },
-        up:    { x: 0,     y: -DIST },
-    };
+        const DIST = 20;
+        const offsets = {
+            right: { x:  DIST, y: 0     },
+            left:  { x: -DIST, y: 0     },
+            down:  { x: 0,     y:  DIST },
+            up:    { x: 0,     y: -DIST },
+        };
 
-    const off  = offsets[dir];
-    const tile = this.scene.wallsLayer.getTileAtWorldXY(
-        this.x + off.x,
-        this.y + off.y
-    );
+        const off  = offsets[dir];
+        const tile = this.scene.wallsLayer.getTileAtWorldXY(
+            this.x + off.x,
+            this.y + off.y
+        );
 
-    return tile && tile.collides;
-}
+        return tile && tile.collides;
+    }
 
     // ─────────────────────────────────────────────────────────
     // TEXTURA DE ATAQUE CON ORIGIN Y BODY AJUSTADOS
@@ -211,8 +201,6 @@ if (this.swordbuffer === 12) {
             case 'down':  this.setOrigin(0.5,  0.25); break;
             case 'up':    this.setOrigin(0.5,  0.75); break;
         }
-        // Restaurar body correcto para esta dirección
-        // (Phaser lo resetea al cambiar la textura)
         this._setBodyForDir(dir);
     }
 
@@ -273,9 +261,11 @@ if (this.swordbuffer === 12) {
         if (this.isDead || this.isInvincible) return;
 
         this.vida -= dano;
+        GameState.playerHP = this.vida; // ← guardar siempre en GameState
 
         if (this.vida <= 0) {
             this.vida = 0;
+            GameState.playerHP = 0;
             this.die();
             return;
         }
@@ -340,7 +330,6 @@ if (this.swordbuffer === 12) {
             case 'left':  this.setTexture('left0');  break;
             case 'right': this.setTexture('right0'); break;
         }
-        // Restaurar body idle — offset siempre (0, 0) en idle
         this._setBodyForDir('idle');
     }
 }

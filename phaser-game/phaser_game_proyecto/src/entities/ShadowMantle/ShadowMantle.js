@@ -443,17 +443,12 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
             this._laughTimer = 0;
         }
 
-        // ── Esperar mientras el boss ríe ──────────────────────
         if (t >= 77) {
-
-            // Salida 1: el jugador atacó directamente al boss
-            // Los enemies que queden vivos SE QUEDAN en el mapa
             if (this.hitsduringenemies >= 1) {
                 this._endEnemyWave(false);
                 return;
             }
 
-            // Salida 2: timeout ~5s — hundir los enemies restantes
             if (t >= 377) {
                 this._endEnemyWave(true);
                 return;
@@ -462,13 +457,11 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
             const enemiesAlive = this.scene.bossEnemies.getChildren()
                 .filter(e => !e.isDead && e.activeHitbox !== undefined).length;
 
-            // Salida 3: todos los enemies muertos — salida normal
             if (enemiesAlive === 0) {
                 this._endEnemyWave(false);
                 return;
             }
 
-            // Repetir sonido de risa cada ~120 frames
             this._laughTimer = (this._laughTimer ?? 0) + 1;
             if (this._laughTimer >= 120) {
                 this._laughTimer = 0;
@@ -477,14 +470,6 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
         }
     }
 
-    // ─────────────────────────────────────────────────────────
-    // FIN DE LA WAVE DE ENEMIGOS
-    //
-    // sinkEnemies = true  → hundir los enemies que queden (timeout)
-    // sinkEnemies = false → dejar los enemies en el mapa
-    //   · Salida por golpe al boss: enemies se quedan activos
-    //   · Salida normal (todos muertos): ya no hay nada que hundir
-    // ─────────────────────────────────────────────────────────
     _endEnemyWave(sinkEnemies) {
         this._playAnim('mantle-idle');
         this.spawnenemies      = 0;
@@ -565,7 +550,7 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
 
             if (t === 25) {
                 this.scene.sound.play('snd_board_mantle_move', { detune: -500 });
-           this.scene.events.emit('boss-phase-transition', { phase: this.phase });
+                this.scene.events.emit('boss-phase-transition', { phase: this.phase });
             }
 
             if (t === 46 && this.phase === 4) {
@@ -922,7 +907,17 @@ export default class ShadowMantle extends Phaser.Physics.Arcade.Sprite {
             (this.scene.registry.get('shadow_mantle_losses') ?? 0) + 1
         );
 
+        // Detener todo movimiento pero NO destruir el sprite —
+        // BossScene._finalizarOutro() lo destruye tras el outro.
+        this.body.enable = false;
+        this.setVelocity(0, 0);
+        this._vx = 0;
+        this._vy = 0;
+        this.clearTint();
+        this.setAlpha(1);
+        this.setVisible(true);
+        this._playAnim('mantle-idle');
+
         this.scene.events.emit('boss-defeated');
-        this.destroy();
     }
 }

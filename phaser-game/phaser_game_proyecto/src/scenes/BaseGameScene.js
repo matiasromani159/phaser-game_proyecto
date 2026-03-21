@@ -4,6 +4,7 @@ import MonsterFlower from '../entities/MonsterFlower.js';
 import MonsterSpear from '../entities/MonsterSpear.js';
 import MonsterLizard from '../entities/MonsterLizard.js';
 import DialogueSystem from '../scenes/DialogueSystem.js';
+import GameState from '../GameState.js'; // ← ajusta la ruta si es necesario
 
 export default class BaseGameScene extends Phaser.Scene {
 
@@ -167,13 +168,10 @@ export default class BaseGameScene extends Phaser.Scene {
         this.attackSound = this.sound.add('snd_sword', { volume: 0.5 });
         this.hitSound    = this.sound.add('player_hit');
 
-        // Jugador
+        // Jugador — el constructor de Player ya lee GameState.playerHP
         const spawn = data?.playerSpawn ?? cfg.playerSpawn;
         this.player = new Player(this, spawn.x, spawn.y);
         this.player.lastDamageTime = 0;
-
-        const savedHP = this.registry.get('playerHP');
-        if (savedHP !== undefined) this.player.vida = savedHP;
 
         // Grupos
         this.monsters    = this.physics.add.group();
@@ -216,7 +214,7 @@ export default class BaseGameScene extends Phaser.Scene {
             this.cameras.main.fadeIn(500, 0, 0, 0);
         }
 
-        this.dialogue = new DialogueSystem(this);
+       this.dialogue = new DialogueSystem(this, this.getDialogueConfig());
         this.events.on('resume', this._alReanudar, this);
     }
 
@@ -501,7 +499,8 @@ export default class BaseGameScene extends Phaser.Scene {
 
     cambiarRoom(roomKey, spawnPos) {
         if (this.timerEvent) this.timerEvent.remove();
-        this.registry.set('playerHP', this.player.vida);
+        // GameState.playerHP ya está actualizado desde takeDamage(),
+        // no hace falta guardarlo manualmente aquí.
 
         this.cameras.main.fadeOut(400, 0, 0, 0);
         this.cameras.main.once('camerafadeoutcomplete', () => {

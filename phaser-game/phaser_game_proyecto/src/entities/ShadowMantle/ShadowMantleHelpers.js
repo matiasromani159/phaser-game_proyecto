@@ -14,7 +14,6 @@ export class ShadowMantleFire3 extends Phaser.Physics.Arcade.Sprite {
 
         this.body.allowGravity = false;
         this.setScale(2);
-           
 
         const dir  = opts.direction ?? 0;
         const spd  = opts.speed     ?? 2;
@@ -52,13 +51,11 @@ export class ShadowMantleFire3 extends Phaser.Physics.Arcade.Sprite {
 
         this._timer++;
 
-        // Bajar cooldown de hit
         if (this._hitCooldown > 0) {
             this._hitCooldown--;
             if (this._hitCooldown === 0) this.activeHitbox = true;
         }
 
-        // Tipo 0: parpadea hasta activetimer, luego activa hitbox
         if (this._type === 0) {
             if (this._timer <= this._activetimer) {
                 this.alpha = this.alpha === 1 ? 0 : 1;
@@ -69,12 +66,10 @@ export class ShadowMantleFire3 extends Phaser.Physics.Arcade.Sprite {
             }
         }
 
-        // Tipo 1: hitbox activa desde el primer frame
         if (this._type === 1 && this._timer === 1) {
             this.activeHitbox = true;
         }
 
-        // Gravedad: GML corre a 30fps, Phaser a 60fps → multiplicador 7.5 en vez de 15
         this.body.velocity.x += Math.cos(this._gravRad) * this._gravity * 7.5;
         this.body.velocity.y += Math.sin(this._gravRad) * this._gravity * 7.5;
 
@@ -198,6 +193,21 @@ export class ShadowMantleClone extends Phaser.Physics.Arcade.Sprite {
             this._dashSpeed   = 2;
             this._dashtimer   = 28;
             this._dashcon     = 2;
+
+            // ── Sonido de dash igual que el boss principal ────
+            const scene = this.scene;
+            if (scene.sound.get('snd_wing')) {
+                scene.sound.play('snd_wing', { volume: 0.8 });
+            }
+            if (scene.sound.get('snd_board_mantle_dash_slow')) {
+                scene.time.delayedCall(200, () => {
+                    if (!this.isDead && scene.sound.get('snd_board_mantle_dash_slow')) {
+                        scene.sound.play('snd_board_mantle_dash_slow', {
+                            detune: Phaser.Math.Between(-50, 50)
+                        });
+                    }
+                });
+            }
         }
 
         if (this._dashcon === 2) {
