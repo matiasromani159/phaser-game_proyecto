@@ -17,7 +17,7 @@ export default class Room1 extends BaseGameScene {
                 { x: 150, y: 150 }
             ],
             monsters: [
-                { type: 'monster', x: 100, y: 100 },
+                { type: 'cat', x: 100, y: 100 },
                 //{ type: 'flower',  x: 300, y: 200 },
                 //{ type: 'spear',   x: 300, y: 100 },
 

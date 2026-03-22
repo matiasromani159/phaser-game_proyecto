@@ -4,51 +4,69 @@
  * Proporciona:
  *   - Setup común (setScale, add.existing, physics.add.existing)
  *   - isDead / hp
- *   - die() genérico con animación 'monster-die' (sobreescribible)
+ *   - recibirDaño(cantidad) — descuenta HP y llama a die() si llega a 0
+ *   - die() — centraliza sonido + drop, llama a _playDieAnim()
+ *   - _playDieAnim() — sobreescribir en hijos para animación propia
  *   - _dropItem() — instancia un HealthDrop al morir
- *
- * Los hijos deben implementar actualizar().
- * Si tienen una animación de muerte distinta, sobreescriben die().
  */
 export default class MonsterBase extends Phaser.Physics.Arcade.Sprite {
 
     constructor(scene, x, y, texture) {
         super(scene, x, y, texture);
 
-            this.setScale(2);
-            
+        this.setScale(2);
+
         scene.add.existing(this);
         scene.physics.add.existing(this);
 
         this.body.allowGravity = false;
         this.isDead = false;
-        this.hp     = 20; // cada hijo puede sobreescribir esto
+        this.hp     = 20;
     }
 
     // ── Sobreescribir en cada hijo ────────────────────────────
     actualizar() {}
 
+    // ── Recibir daño ──────────────────────────────────────────
+    recibirDaño(cantidad) {
+        if (this.isDead) return;
+
+        const ahora = this.scene.time.now;
+        if (!this._lastHitTime) this._lastHitTime = 0;
+        if (ahora - this._lastHitTime < 300) return;
+        this._lastHitTime = ahora;
+
+        this.hp -= cantidad;
+        if (this.hp <= 0) this.die();
+    }
+
     // ── Drop de item curativo ─────────────────────────────────
     _dropItem() {
         const drop = new HealthDrop(this.scene, this.x, this.y);
-        // El grupo healthDrops debe existir en la escena
         if (this.scene.healthDrops) {
             this.scene.healthDrops.add(drop);
-             drop.setScale(2);
-              
+            drop.setScale(2);
         }
     }
 
-    // ── Muerte genérica (Monster, MonsterSpear, MonsterFlower) ─
+    // ── Muerte — centralizada, NO sobreescribir en hijos ─────
+    // Los hijos sobreescriben _playDieAnim() si necesitan animación propia
     die() {
         if (this.isDead) return;
         this.isDead = true;
 
         this.setVelocity(0, 0);
         this.body.enable = false;
-
         this._dropItem();
 
+        // Sonido al morir — siempre se reproduce para todos los enemigos
+        if (this.scene?.sound) this.scene.sound.play('snd_board_damage', { volume: 0.7 });
+
+        this._playDieAnim();
+    }
+
+    // ── Animación de muerte — sobreescribir en hijos ──────────
+    _playDieAnim() {
         this.play('monster-die');
         this.once('animationcomplete', () => this.destroy());
     }
@@ -56,7 +74,6 @@ export default class MonsterBase extends Phaser.Physics.Arcade.Sprite {
 
 // ─────────────────────────────────────────────────────────────
 // HealthDrop — Item curativo que aparece al matar un enemigo.
-// Cura 10 HP al jugador al tocarlo.
 // ─────────────────────────────────────────────────────────────
 export class HealthDrop extends Phaser.Physics.Arcade.Sprite {
 
@@ -69,21 +86,15 @@ export class HealthDrop extends Phaser.Physics.Arcade.Sprite {
         this.body.allowGravity = false;
         this.body.setImmovable(true);
         this.setTint(0x00ff88);
-        
+        this.setOrigin(0, 0);
 
         this.HEAL_AMOUNT = 10;
-
-        // Pequeña animación de flotación
- 
     }
 
-    /** Llamar desde BaseGameScene al detectar overlap con el jugador */
     collect(player) {
         if (!player || player.isDead) return;
-
         player.vida = Math.min(player.vidaMax, player.vida + this.HEAL_AMOUNT);
         player.drawHealthBar();
-
         this.destroy();
     }
 }

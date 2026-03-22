@@ -329,22 +329,14 @@ export default class MonsterLizard extends MonsterBase {
     // ─────────────────────────────────────────────────────────
     // MUERTE — sobreescribe MonsterBase porque la animación es distinta
     // ─────────────────────────────────────────────────────────
-    die() {
-        if (this.isDead) return;
-        this.isDead = true;
-
+    _playDieAnim() {
         if (this.reticle) { this.reticle.destroy(); this.reticle = null; }
-
-        this.setVelocity(0, 0);
-        this.body.enable = false;
-
-        // Llamar al drop ANTES de la animación de muerte
-        this._dropItem();
 
         let dietimer = 0;
         const dieInterval = this.scene.time.addEvent({
             delay: 33, loop: true,
             callback: () => {
+                if (!this.active) { dieInterval.remove(); return; }
                 dietimer++;
                 this._facingRight = !this._facingRight;
                 this._updateSprite(true);

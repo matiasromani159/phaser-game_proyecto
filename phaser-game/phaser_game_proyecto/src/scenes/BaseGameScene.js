@@ -3,8 +3,10 @@ import Monster from '../entities/monster.js';
 import MonsterFlower from '../entities/MonsterFlower.js';
 import MonsterSpear from '../entities/MonsterSpear.js';
 import MonsterLizard from '../entities/MonsterLizard.js';
+import MonsterBlueFish from '../entities/MonsterBlueFish.js';
+import MonsterCatSinging from '../entities/MonsterCatSinging.js';
 import DialogueSystem from '../scenes/DialogueSystem.js';
-import GameState from '../GameState.js'; // ← ajusta la ruta si es necesario
+import GameState from '../GameState.js';
 
 export default class BaseGameScene extends Phaser.Scene {
 
@@ -47,9 +49,9 @@ export default class BaseGameScene extends Phaser.Scene {
         this.load.audio('snd_sword',  '/src/assets/sounds/snd_sword.wav');
         this.load.image('healthbar',  '/src/assets/sprites/spr_hp_bar.png');
 
-        this.load.image('spr_board_candy', '/src/assets/sprites/spr_board_candy.png');
+        this.load.audio('snd_board_damage', '/src/assets/sounds/snd_board_damage.wav');
 
-        // ── Sonido al recoger candy / health drop ────────────
+        this.load.image('spr_board_candy', '/src/assets/sprites/spr_board_candy.png');
         this.load.audio('snd_power', '/src/assets/sounds/snd_power.wav');
 
         // Sonidos del sistema de diálogo
@@ -111,6 +113,25 @@ export default class BaseGameScene extends Phaser.Scene {
             this.load.image(`lightning_diag_${i}`,     `/src/assets/sprites/spr_lizard/spr_board_lightningbullet_diag/spr_board_lightningbullet_diag_${i}.png`);
         }
 
+        // ── MonsterCatSinging ─────────────────────────────────
+        for (let i = 0; i < 2; i++) {
+            this.load.image(`cat_singing_${i}`,      `/src/assets/sprites/spr_board_cat_singing/spr_board_cat_singing/spr_board_cat_singing_${i}.png`);
+            this.load.image(`cat_singing_hurt_${i}`, `/src/assets/sprites/spr_board_cat_singing/spr_board_cat_singing_hurt/spr_board_cat_singing_hurt_${i}.png`);
+        }
+        this.load.image('spr_musical_notes', '/src/assets/sprites/spr_board_cat_singing/spr_musical_notes.png');
+        this.load.audio('snd_crowd', '/src/assets/sounds/snd_crowd.wav');
+
+        // ── MonsterBlueFish ───────────────────────────────────
+        const bluefishDirs = ['r', 'l', 'u', 'd'];
+        bluefishDirs.forEach(dir => {
+            for (let i = 0; i < 2; i++) {
+                this.load.image(
+                    `bluefish_${dir}_${i}`,
+                    `/src/assets/sprites/spr_bluefish/spr_board_bluefish_${dir}/spr_board_bluefish_${dir}_${i}.png`
+                );
+            }
+        });
+
         // Savepoint
         for (let i = 0; i < 6; i++)
             this.load.image(`savepoint_${i}`, `/src/assets/sprites/spr_savepoint/spr_savepoint_${i}.png`);
@@ -168,7 +189,6 @@ export default class BaseGameScene extends Phaser.Scene {
         this.attackSound = this.sound.add('snd_sword', { volume: 0.5 });
         this.hitSound    = this.sound.add('player_hit');
 
-        // Jugador — el constructor de Player ya lee GameState.playerHP
         const spawn = data?.playerSpawn ?? cfg.playerSpawn;
         this.player = new Player(this, spawn.x, spawn.y);
         this.player.lastDamageTime = 0;
@@ -178,6 +198,8 @@ export default class BaseGameScene extends Phaser.Scene {
         this.flowers     = [];
         this.spears      = [];
         this.lizards     = [];
+        this.bluefishes  = [];
+        this.cats        = [];
         this.pellets     = this.physics.add.group();
         this.healthDrops = this.physics.add.group();
 
@@ -192,6 +214,13 @@ export default class BaseGameScene extends Phaser.Scene {
                 const lizard = new MonsterLizard(this, m.x, m.y, m.lizardType ?? 0);
                 this.lizards.push(lizard);
                 this.monsters.add(lizard);
+            } else if (m.type === 'cat') {
+                const cat = new MonsterCatSinging(this, m.x, m.y);
+                this.cats.push(cat);
+                this.monsters.add(cat);
+            } else if (m.type === 'bluefish') {                const bf = new MonsterBlueFish(this, m.x, m.y);
+                this.bluefishes.push(bf);
+                this.monsters.add(bf);
             } else {
                 const monster = new Monster(this, m.x, m.y, 'monster_right_0');
                 monster.play('monster-walk');
@@ -214,7 +243,7 @@ export default class BaseGameScene extends Phaser.Scene {
             this.cameras.main.fadeIn(500, 0, 0, 0);
         }
 
-       this.dialogue = new DialogueSystem(this, this.getDialogueConfig());
+        this.dialogue = new DialogueSystem(this, this.getDialogueConfig());
         this.events.on('resume', this._alReanudar, this);
     }
 
@@ -244,7 +273,7 @@ export default class BaseGameScene extends Phaser.Scene {
         });
 
         this.player.update(this.cursors);
-        this.monsters.getChildren().forEach(m => m.actualizar());
+        this.monsters.getChildren().forEach(m => m.actualizar(this.player));
         this.flowers.forEach(f => f.actualizar());
         this._checkSwordVsFlowers();
         this.pellets.getChildren().forEach(p => { if (p.updateColor) p.updateColor(delta); });
@@ -411,6 +440,15 @@ export default class BaseGameScene extends Phaser.Scene {
 
         makeAnim('flower-idle',      ['flower_0', 'flower_1'], 4);
         makeAnim('flower-telegraph', ['telegraph_0', 'telegraph_1'], 8);
+
+        // ── MonsterCatSinging ─────────────────────────────────
+        makeAnim('cat-singing',      ['cat_singing_0',      'cat_singing_1'],      6);
+        makeAnim('cat-singing-hurt', ['cat_singing_hurt_0', 'cat_singing_hurt_1'], 6);
+
+        // ── MonsterBlueFish ───────────────────────────────────
+        ['r', 'l', 'u', 'd'].forEach(dir => {
+            makeAnim(`bluefish-${dir}`, [`bluefish_${dir}_0`, `bluefish_${dir}_1`], 6);
+        });
     }
 
     _crearColisiones() {
@@ -430,8 +468,13 @@ export default class BaseGameScene extends Phaser.Scene {
         });
 
         // Ataque del jugador → monstruo
+        // Pasa la posición del jugador para el knockback direccional
         this.physics.add.overlap(this.player.attackHitbox, this.monsters, (hitbox, monster) => {
-            monster.die();
+            if (monster.recibirDaño) {
+                monster.recibirDaño(10, this.player.x, this.player.y);
+            } else {
+                monster.die();
+            }
         });
 
         // Jugador ← pellets
@@ -470,7 +513,9 @@ export default class BaseGameScene extends Phaser.Scene {
         this.flowers.forEach(flower => {
             if (flower.isDead) return;
             if (Phaser.Geom.Intersects.RectangleToRectangle(hitBounds, flower.getBounds())) {
-                flower.die();
+                flower.recibirDaño
+                    ? flower.recibirDaño(10, this.player.x, this.player.y)
+                    : flower.die();
             }
         });
     }
@@ -499,8 +544,6 @@ export default class BaseGameScene extends Phaser.Scene {
 
     cambiarRoom(roomKey, spawnPos) {
         if (this.timerEvent) this.timerEvent.remove();
-        // GameState.playerHP ya está actualizado desde takeDamage(),
-        // no hace falta guardarlo manualmente aquí.
 
         this.cameras.main.fadeOut(400, 0, 0, 0);
         this.cameras.main.once('camerafadeoutcomplete', () => {
