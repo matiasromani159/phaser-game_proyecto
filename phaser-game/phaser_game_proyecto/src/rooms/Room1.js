@@ -18,11 +18,12 @@ export default class Room1 extends BaseGameScene {
             ],
             monsters: [
                 { type: 'cat', x: 100, y: 100 },
+                { type: 'silentcat', x: 200, y: 100 },
                 //{ type: 'flower',  x: 300, y: 200 },
                 //{ type: 'spear',   x: 300, y: 100 },
 
              //    { type: 'lizard', x: 200, y: 200 },                // type 0 — camina + dispara pellets
-    { type: 'lizard', x: 300, y: 200, lizardType: 1 }, // type 1 — salta + rayos en 8 dirs
+   // { type: 'lizard', x: 300, y: 200, lizardType: 1 }, // type 1 — salta + rayos en 8 dirs
    // { type: 'lizard', x: 400, y: 200, lizardType: 2 }, // type 2 — salta cerca del jugador
             ],
             doors: {

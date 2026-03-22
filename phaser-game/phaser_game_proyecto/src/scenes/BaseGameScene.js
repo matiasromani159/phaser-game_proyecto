@@ -5,6 +5,7 @@ import MonsterSpear from '../entities/MonsterSpear.js';
 import MonsterLizard from '../entities/MonsterLizard.js';
 import MonsterBlueFish from '../entities/MonsterBlueFish.js';
 import MonsterCatSinging from '../entities/MonsterCatSinging.js';
+import MonsterSilentCat from '../entities/MonsterSilentCat.js';
 import DialogueSystem from '../scenes/DialogueSystem.js';
 import GameState from '../GameState.js';
 
@@ -47,9 +48,8 @@ export default class BaseGameScene extends Phaser.Scene {
         this.load.audio(cfg.music, `/src/assets/sounds/${cfg.music}`);
         this.load.audio('player_hit', '/src/assets/sounds/snd_hurt.wav');
         this.load.audio('snd_sword',  '/src/assets/sounds/snd_sword.wav');
-        this.load.image('healthbar',  '/src/assets/sprites/spr_hp_bar.png');
-
         this.load.audio('snd_board_damage', '/src/assets/sounds/snd_board_damage.wav');
+        this.load.image('healthbar',  '/src/assets/sprites/spr_hp_bar.png');
 
         this.load.image('spr_board_candy', '/src/assets/sprites/spr_board_candy.png');
         this.load.audio('snd_power', '/src/assets/sounds/snd_power.wav');
@@ -120,6 +120,11 @@ export default class BaseGameScene extends Phaser.Scene {
         }
         this.load.image('spr_musical_notes', '/src/assets/sprites/spr_board_cat_singing/spr_musical_notes.png');
         this.load.audio('snd_crowd', '/src/assets/sounds/snd_crowd.wav');
+
+        // ── MonsterSilentCat ──────────────────────────────────
+        for (let i = 0; i < 2; i++) {
+            this.load.image(`silent_cat_${i}`, `/src/assets/sprites/spr_board_cat_silent/spr_board_cat_silent_${i}.png`);
+        }
 
         // ── MonsterBlueFish ───────────────────────────────────
         const bluefishDirs = ['r', 'l', 'u', 'd'];
@@ -200,6 +205,7 @@ export default class BaseGameScene extends Phaser.Scene {
         this.lizards     = [];
         this.bluefishes  = [];
         this.cats        = [];
+        this.silentCats  = [];
         this.pellets     = this.physics.add.group();
         this.healthDrops = this.physics.add.group();
 
@@ -218,6 +224,10 @@ export default class BaseGameScene extends Phaser.Scene {
                 const cat = new MonsterCatSinging(this, m.x, m.y);
                 this.cats.push(cat);
                 this.monsters.add(cat);
+            } else if (m.type === 'silentcat') {
+                const sc = new MonsterSilentCat(this, m.x, m.y);
+                this.silentCats.push(sc);
+                this.monsters.add(sc);
             } else if (m.type === 'bluefish') {                const bf = new MonsterBlueFish(this, m.x, m.y);
                 this.bluefishes.push(bf);
                 this.monsters.add(bf);
