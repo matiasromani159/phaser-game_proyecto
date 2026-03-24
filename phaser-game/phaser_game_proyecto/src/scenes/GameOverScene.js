@@ -141,29 +141,42 @@ export default class GameOverScene extends Phaser.Scene {
         });
     }
 
-    update() {
-        if (this.canRestart && Phaser.Input.Keyboard.JustDown(this.keyZ)) {
-            this.canRestart = false;
+ update() {
+    if (this.canRestart && Phaser.Input.Keyboard.JustDown(this.keyZ)) {
+        this.canRestart = false;
 
-            // ── Resetear la vida del jugador al reiniciar ────
-            GameState.playerHP = GameState.playerHPMax;
+        // Restaura HP desde el save
+        GameState.playerHP = GameState.playerHPMax;
 
-            // Bajar volumen progresivamente en 1200ms (igual que el fade)
-            this.tweens.add({
-                targets: this.gameoverSound,
-                volume: 0,
-                duration: 1200,
-                ease: 'Linear',
-                onComplete: () => {
-                    this.gameoverSound.stop();
-                    this.scene.stop();
-                    const lastRoom = this.game.registry.get('lastRoom') || 'Room1';
-                    this.scene.start(lastRoom, { fromGameOver: true });
+        this.tweens.add({
+            targets: this.gameoverSound,
+            volume: 0,
+            duration: 1200,
+            ease: 'Linear',
+            onComplete: () => {
+                this.gameoverSound.stop();
+                this.scene.stop();
+
+                // ── Carga el último save ──────────────────
+                if (GameState.cargar()) {
+                    // Hay save → vuelve a la room guardada
+                    this.scene.start(GameState.roomActual, {
+                        segundos   : GameState.segundos,
+                        playerSpawn: GameState.playerSpawn,
+                        fromGameOver: true
+                    });
+                } else {
+                    // Sin save → empieza desde el principio
+                    this.scene.start('Room1', {
+                        segundos    : 0,
+                        playerSpawn : { x: 200, y: 200 },
+                        fromGameOver: true
+                    });
                 }
-            });
+            }
+        });
 
-            // Fade de pantalla al mismo tiempo
-            this.cameras.main.fadeOut(1200, 0, 0, 0);
-        }
+        this.cameras.main.fadeOut(1200, 0, 0, 0);
     }
+}
 }

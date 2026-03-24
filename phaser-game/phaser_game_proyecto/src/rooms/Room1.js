@@ -28,7 +28,7 @@ export default class Room1 extends BaseGameScene {
             ],
             doors: {
                 arriba:    null,
-               abajo: { goTo: 'BossScene', spawn: { x: 200, y: 150 } },
+               abajo: { goTo: 'Room2', spawn: { x: 200, y: 150 } },
                 izquierda: null,
                 derecha:   null,
             }

@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.12.0" orientation="orthogonal" renderorder="right-down" width="12" height="9" tilewidth="36" tileheight="36" infinite="0" nextlayerid="3" nextobjectid="1">
+ <tileset firstgid="1" name="tipe" tilewidth="36" tileheight="36" tilecount="930" columns="30">
+  <image source="tipe.png" width="1080" height="1116"/>
+  <tile id="90">
+   <properties>
+    <property name="collides" type="bool" value="true"/>
+   </properties>
+   <animation>
+    <frame tileid="90" duration="400"/>
+    <frame tileid="91" duration="400"/>
+    <frame tileid="92" duration="400"/>
+    <frame tileid="93" duration="400"/>
+   </animation>
+  </tile>
+  <tile id="416">
+   <properties>
+    <property name="collides" type="bool" value="true"/>
+   </properties>
+  </tile>
+  <tile id="417">
+   <properties>
+    <property name="collides" type="bool" value="true"/>
+   </properties>
+  </tile>
+  <tile id="418">
+   <properties>
+    <property name="collides" type="bool" value="true"/>
+   </properties>
+  </tile>
+  <tile id="419">
+   <properties>
+    <property name="collides" type="bool" value="false"/>
+   </properties>
+  </tile>
+  <tile id="421">
+   <properties>
+    <property name="collides" type="bool" value="true"/>
+   </properties>
+  </tile>
+  <tile id="432">
+   <properties>
+    <property name="collides" type="bool" value="true"/>
+   </properties>
+  </tile>
+  <tile id="448">
+   <properties>
+    <property name="collides" type="bool" value="true"/>
+   </properties>
+  </tile>
+  <tile id="453">
+   <properties>
+    <property name="collides" type="bool" value="true"/>
+   </properties>
+  </tile>
+  <tile id="467">
+   <properties>
+    <property name="collides" type="bool" value="true"/>
+   </properties>
+  </tile>
+  <tile id="496">
+   <properties>
+    <property name="collides" type="bool" value="true"/>
+   </properties>
+  </tile>
+  <tile id="497">
+   <properties>
+    <property name="collides" type="bool" value="true"/>
+   </properties>
+  </tile>
+  <tile id="501">
+   <properties>
+    <property name="collides" type="bool" value="true"/>
+   </properties>
+  </tile>
+ </tileset>
+ <layer id="1" name="ground" width="12" height="9">
+  <data encoding="csv">
+417,418,418,418,418,418,418,418,418,418,418,422,
+449,450,450,450,450,450,450,450,450,450,450,454,
+449,450,450,450,450,450,450,450,450,450,450,454,
+450,450,450,450,450,468,468,450,450,450,450,450,
+450,450,450,450,450,468,468,450,450,450,450,450,
+450,450,450,450,450,468,468,450,450,450,450,450,
+449,450,450,450,450,450,450,450,450,450,450,454,
+449,450,450,450,450,450,450,450,450,450,450,454,
+497,498,498,498,498,498,498,498,498,498,498,502
+</data>
+ </layer>
+ <layer id="2" name="walls" width="12" height="9">
+  <data encoding="csv">
+417,418,418,418,418,418,418,418,418,418,418,422,
+449,0,0,0,0,0,0,0,0,0,0,454,
+449,0,0,0,0,0,0,0,0,0,0,454,
+0,0,0,0,0,468,468,0,0,0,0,0,
+0,0,0,0,0,468,468,0,0,0,0,0,
+0,0,0,0,0,468,468,0,0,0,0,0,
+449,0,0,0,0,0,0,0,0,0,0,454,
+449,0,0,0,0,0,0,0,0,0,0,454,
+497,498,498,498,498,498,498,498,498,498,498,502
+</data>
+ </layer>
+</map>

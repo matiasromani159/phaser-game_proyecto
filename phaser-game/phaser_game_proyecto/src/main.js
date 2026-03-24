@@ -6,22 +6,26 @@ import AuthScene from './scenes/AuthScene.js';
 import LoginScene from './scenes/LoginScene.js';
 import SaveScene from './scenes/SaveScene.js';
 import BossScene from './scenes/BossScene.js';
+import DebugRoomSelector from './scenes/DebugRoomSelector.js';
+import MazmorraRoom1 from './rooms/MazmorraRoom1.js';
+import MenuScene from './scenes/MenuScene.js';
 
-//Una prueba para GIthuB
+const IS_DEBUG = false; // ← false para producción
+
 const config = {
     type: Phaser.AUTO,
-    
     width: 432,
     height: 324,
-     zoom: 2, 
-    //    scene: [AuthScene, LoginScene, GameScene, GameOverScene],
-    scene: [Room1, Room2, BossScene, GameOverScene, SaveScene],
+    zoom: 2,
+    scene: IS_DEBUG
+        ? [DebugRoomSelector, MenuScene, AuthScene, LoginScene, MazmorraRoom1, Room1, Room2, BossScene, GameOverScene, SaveScene]
+        : [AuthScene,         MenuScene, LoginScene, MazmorraRoom1, Room1, Room2, BossScene, GameOverScene, SaveScene],
     physics: {
         default: 'arcade',
         arcade: { debug: false }
     },
-    pixelArt: true,     // para pixel art
-    roundPixels: true   // evita temblor de sprites
+    pixelArt: true,
+    roundPixels: true
 };
 
 async function init() {
@@ -33,22 +37,17 @@ async function init() {
     } catch (e) {
         console.warn('[fonts] Error cargando fuentes, arrancando igualmente.', e);
     }
- 
-    // Forzar al navegador a renderizar ambas fuentes antes de que
-    // Phaser cree el canvas — sin esto el canvas puede cachear
-    // el fallback del sistema aunque el await haya terminado.
+
     const primer = document.createElement('div');
     primer.style.cssText = 'position:absolute;left:-9999px;opacity:0;font-size:16px;';
     primer.innerHTML =
         '<span style="font-family:UndertaleFont">.</span>' +
         '<span style="font-family:TennaGlyphs">.</span>';
     document.body.appendChild(primer);
-    // Un frame de espera para que el layout engine lo procese
     await new Promise(r => requestAnimationFrame(r));
     document.body.removeChild(primer);
- 
+
     window.game = new Phaser.Game(config);
 }
- 
+
 init();
- 

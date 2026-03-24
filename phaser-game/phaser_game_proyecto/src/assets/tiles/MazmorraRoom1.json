@@ -1,0 +1,205 @@
+{ "compressionlevel":-1,
+ "height":9,
+ "infinite":false,
+ "layers":[
+        {
+         "data":[417, 418, 418, 418, 418, 418, 418, 418, 418, 418, 418, 422,
+            449, 450, 450, 450, 450, 450, 450, 450, 450, 450, 450, 454,
+            449, 450, 450, 450, 450, 450, 450, 450, 450, 450, 450, 454,
+            450, 450, 450, 450, 450, 468, 468, 450, 450, 450, 450, 450,
+            450, 450, 450, 450, 450, 468, 468, 450, 450, 450, 450, 450,
+            450, 450, 450, 450, 450, 468, 468, 450, 450, 450, 450, 450,
+            449, 450, 450, 450, 450, 450, 450, 450, 450, 450, 450, 454,
+            449, 450, 450, 450, 450, 450, 450, 450, 450, 450, 450, 454,
+            497, 498, 498, 498, 498, 498, 498, 498, 498, 498, 498, 502],
+         "height":9,
+         "id":1,
+         "name":"ground",
+         "opacity":1,
+         "type":"tilelayer",
+         "visible":true,
+         "width":12,
+         "x":0,
+         "y":0
+        }, 
+        {
+         "data":[417, 418, 418, 418, 418, 418, 418, 418, 418, 418, 418, 422,
+            449, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 454,
+            449, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 454,
+            0, 0, 0, 0, 0, 468, 468, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 468, 468, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 468, 468, 0, 0, 0, 0, 0,
+            449, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 454,
+            449, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 454,
+            497, 498, 498, 498, 498, 498, 498, 498, 498, 498, 498, 502],
+         "height":9,
+         "id":2,
+         "name":"walls",
+         "opacity":1,
+         "type":"tilelayer",
+         "visible":true,
+         "width":12,
+         "x":0,
+         "y":0
+        }],
+ "nextlayerid":3,
+ "nextobjectid":1,
+ "orientation":"orthogonal",
+ "renderorder":"right-down",
+ "tiledversion":"1.12.0",
+ "tileheight":36,
+ "tilesets":[
+        {
+         "columns":30,
+         "firstgid":1,
+         "image":"tipe.png",
+         "imageheight":1116,
+         "imagewidth":1080,
+         "margin":0,
+         "name":"tipe",
+         "spacing":0,
+         "tilecount":930,
+         "tileheight":36,
+         "tiles":[
+                {
+                 "animation":[
+                        {
+                         "duration":400,
+                         "tileid":90
+                        }, 
+                        {
+                         "duration":400,
+                         "tileid":91
+                        }, 
+                        {
+                         "duration":400,
+                         "tileid":92
+                        }, 
+                        {
+                         "duration":400,
+                         "tileid":93
+                        }],
+                 "id":90,
+                 "properties":[
+                        {
+                         "name":"collides",
+                         "type":"bool",
+                         "value":true
+                        }]
+                }, 
+                {
+                 "id":416,
+                 "properties":[
+                        {
+                         "name":"collides",
+                         "type":"bool",
+                         "value":true
+                        }]
+                }, 
+                {
+                 "id":417,
+                 "properties":[
+                        {
+                         "name":"collides",
+                         "type":"bool",
+                         "value":true
+                        }]
+                }, 
+                {
+                 "id":418,
+                 "properties":[
+                        {
+                         "name":"collides",
+                         "type":"bool",
+                         "value":true
+                        }]
+                }, 
+                {
+                 "id":419,
+                 "properties":[
+                        {
+                         "name":"collides",
+                         "type":"bool",
+                         "value":false
+                        }]
+                }, 
+                {
+                 "id":421,
+                 "properties":[
+                        {
+                         "name":"collides",
+                         "type":"bool",
+                         "value":true
+                        }]
+                }, 
+                {
+                 "id":432,
+                 "properties":[
+                        {
+                         "name":"collides",
+                         "type":"bool",
+                         "value":true
+                        }]
+                }, 
+                {
+                 "id":448,
+                 "properties":[
+                        {
+                         "name":"collides",
+                         "type":"bool",
+                         "value":true
+                        }]
+                }, 
+                {
+                 "id":453,
+                 "properties":[
+                        {
+                         "name":"collides",
+                         "type":"bool",
+                         "value":true
+                        }]
+                }, 
+                {
+                 "id":467,
+                 "properties":[
+                        {
+                         "name":"collides",
+                         "type":"bool",
+                         "value":true
+                        }]
+                }, 
+                {
+                 "id":496,
+                 "properties":[
+                        {
+                         "name":"collides",
+                         "type":"bool",
+                         "value":true
+                        }]
+                }, 
+                {
+                 "id":497,
+                 "properties":[
+                        {
+                         "name":"collides",
+                         "type":"bool",
+                         "value":true
+                        }]
+                },
+            
+                {
+                 "id":501,
+                 "properties":[
+                        {
+                         "name":"collides",
+                         "type":"bool",
+                         "value":true
+                        }]
+                }],
+         "tilewidth":36
+        }],
+ "tilewidth":36,
+ "type":"map",
+ "version":"1.10",
+ "width":12
+}

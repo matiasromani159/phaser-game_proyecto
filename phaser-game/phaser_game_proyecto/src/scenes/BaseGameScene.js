@@ -54,6 +54,8 @@ export default class BaseGameScene extends Phaser.Scene {
         this.load.image('spr_board_candy', '/src/assets/sprites/spr_board_candy.png');
         this.load.audio('snd_power', '/src/assets/sounds/snd_power.wav');
 
+        this.load.audio('root_8bit', '/src/assets/sounds/root_8bit.ogg');
+
         // Sonidos del sistema de diálogo
         this.load.audio('snd_board_text_main',     '/src/assets/sounds/snd_board_text_main.wav');
         this.load.audio('snd_board_text_main_end', '/src/assets/sounds/snd_board_text_main_end.wav');
@@ -209,30 +211,44 @@ export default class BaseGameScene extends Phaser.Scene {
         this.pellets     = this.physics.add.group();
         this.healthDrops = this.physics.add.group();
 
-        cfg.monsters.forEach(m => {
+        // ── Crear monstruos (saltando los ya muertos) ─────────
+        cfg.monsters.forEach((m, i) => {
+            const deadId = `${this.scene.key}_${m.type}_${i}`;
+
+            if (GameState.estaMuerto(deadId)) return;
+
             if (m.type === 'flower') {
-                this.flowers.push(new MonsterFlower(this, m.x, m.y));
+                const flower = new MonsterFlower(this, m.x, m.y);
+                flower.deadId = deadId;
+                this.flowers.push(flower);
             } else if (m.type === 'spear') {
                 const spear = new MonsterSpear(this, m.x, m.y);
+                spear.deadId = deadId;
                 this.spears.push(spear);
                 this.monsters.add(spear);
             } else if (m.type === 'lizard') {
                 const lizard = new MonsterLizard(this, m.x, m.y, m.lizardType ?? 0);
+                lizard.deadId = deadId;
                 this.lizards.push(lizard);
                 this.monsters.add(lizard);
             } else if (m.type === 'cat') {
                 const cat = new MonsterCatSinging(this, m.x, m.y);
+                cat.deadId = deadId;
                 this.cats.push(cat);
                 this.monsters.add(cat);
             } else if (m.type === 'silentcat') {
                 const sc = new MonsterSilentCat(this, m.x, m.y);
+                sc.deadId = deadId;
                 this.silentCats.push(sc);
                 this.monsters.add(sc);
-            } else if (m.type === 'bluefish') {                const bf = new MonsterBlueFish(this, m.x, m.y);
+            } else if (m.type === 'bluefish') {
+                const bf = new MonsterBlueFish(this, m.x, m.y);
+                bf.deadId = deadId;
                 this.bluefishes.push(bf);
                 this.monsters.add(bf);
             } else {
                 const monster = new Monster(this, m.x, m.y, 'monster_right_0');
+                monster.deadId = deadId;
                 monster.play('monster-walk');
                 this.monsters.add(monster);
             }
@@ -380,8 +396,9 @@ export default class BaseGameScene extends Phaser.Scene {
             segundos    : this.segundos,
             playerHP    : this.player.vida,
             roomName    : cfg.displayName ?? this.scene.key,
-            playerName  : this.registry.get('playerName')  ?? 'KRIS',
-            playerLevel : this.registry.get('playerLevel') ?? 1
+            playerName  : this.registry.get('playerName')  ?? GameState.playerName ?? 'KRIS',
+            playerLevel : this.registry.get('playerLevel') ?? GameState.playerLevel ?? 1,
+            playerSpawn : { x: Math.round(this.player.x), y: Math.round(this.player.y) }
         });
     }
 
@@ -478,12 +495,17 @@ export default class BaseGameScene extends Phaser.Scene {
         });
 
         // Ataque del jugador → monstruo
-        // Pasa la posición del jugador para el knockback direccional
         this.physics.add.overlap(this.player.attackHitbox, this.monsters, (hitbox, monster) => {
             if (monster.recibirDaño) {
-                monster.recibirDaño(10, this.player.x, this.player.y);
+                const murio = monster.recibirDaño(10, this.player.x, this.player.y);
+                if (murio && monster.deadId) {
+                    GameState.matarMonstruo(monster.deadId);
+                }
             } else {
                 monster.die();
+                if (monster.deadId) {
+                    GameState.matarMonstruo(monster.deadId);
+                }
             }
         });
 
@@ -523,9 +545,17 @@ export default class BaseGameScene extends Phaser.Scene {
         this.flowers.forEach(flower => {
             if (flower.isDead) return;
             if (Phaser.Geom.Intersects.RectangleToRectangle(hitBounds, flower.getBounds())) {
-                flower.recibirDaño
-                    ? flower.recibirDaño(10, this.player.x, this.player.y)
-                    : flower.die();
+                if (flower.recibirDaño) {
+                    const murio = flower.recibirDaño(10, this.player.x, this.player.y);
+                    if (murio && flower.deadId) {
+                        GameState.matarMonstruo(flower.deadId);
+                    }
+                } else {
+                    flower.die();
+                    if (flower.deadId) {
+                        GameState.matarMonstruo(flower.deadId);
+                    }
+                }
             }
         });
     }
@@ -558,7 +588,7 @@ export default class BaseGameScene extends Phaser.Scene {
         this.cameras.main.fadeOut(400, 0, 0, 0);
         this.cameras.main.once('camerafadeoutcomplete', () => {
             this.scene.start(roomKey, {
-                segundos: this.segundos,
+                segundos   : this.segundos,
                 playerSpawn: spawnPos
             });
         });

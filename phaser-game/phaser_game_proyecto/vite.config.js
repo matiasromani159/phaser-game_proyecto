@@ -4,9 +4,8 @@ export default defineConfig({
   server: {
     proxy: {
       '/php': {
-        target: 'http://localhost:3000/phaser-game',
+        target: 'http://localhost:3000',
         changeOrigin: true,
-        rewrite: path => path.replace(/^\/php/, '/php')
       }
     }
   }
