@@ -43,17 +43,19 @@ export default class MonsterSilentCat extends MonsterBase {
     }
 
     // ── Recibir daño — solo cuando es agresivo ────────────────
-    recibirDaño(cantidad) {
-        if (!this.aggressive || this.isDead) return;
+   recibirDaño(cantidad) {
+    if (!this.aggressive || this.isDead) return false;
 
-        const ahora = this.scene.time.now;
-        if (!this._lastHitTime) this._lastHitTime = 0;
-        if (ahora - this._lastHitTime < 300) return;
-        this._lastHitTime = ahora;
+    const ahora = this.scene.time.now;
+    if (!this._lastHitTime) this._lastHitTime = 0;
+    if (ahora - this._lastHitTime < 300) return false;
+    this._lastHitTime = ahora;
 
-        this.hp -= cantidad;
-        if (this.hp <= 0) this.die();
-    }
+    this.hp -= cantidad;
+    if (this.hp <= 0) { this.die(); return true; } // ← muerto
+
+    return false; // ← herido pero vivo
+}
 
     // ── Lógica principal ──────────────────────────────────────
     actualizar(player) {

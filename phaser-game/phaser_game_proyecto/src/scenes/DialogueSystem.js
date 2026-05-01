@@ -65,6 +65,17 @@ export default class DialogueSystem {
         this._build();
     }
 
+    // Igual que show() pero espera automáticamente a que el diálogo anterior termine
+    showQueued(messages, callback = null) {
+        if (!this._active && !this._closing) {
+            this.show(messages, callback);
+            return;
+        }
+        this.scene.time.delayedCall(50, () => {
+            this.showQueued(messages, callback);
+        });
+    }
+
     get isActive() { return this._active; }
 
     update() {
@@ -216,11 +227,6 @@ const COLOR_MAP = {
 // Cache global de anchos medidos
 const _charWidthCache = {};
 
-/**
- * Mide el ancho del carácter MÁS ANCHO de la fuente usando Phaser.
- * Usar el máximo en vez del promedio garantiza que ningún carácter
- * desborde el borde de la caja.
- */
 function _medirCharWidth(scene, fontFamily, fontSize) {
     const key = `${fontFamily}_${fontSize}`;
     if (_charWidthCache[key]) return _charWidthCache[key];
@@ -254,7 +260,6 @@ class BoardWriter {
         this._triangle   = null;
         this._sinerTimer = 0;
 
-        // ── Usar medición real con objeto Phaser temporal ─────
         this._charWidth = _medirCharWidth(scene, opts.fontFamily, opts.fontSize);
 
         this._tokens  = this._parseWithWrap(rawText);
@@ -416,7 +421,6 @@ class BoardWriter {
                 return;
             }
 
-            // Medir palabra completa carácter a carácter con el ancho máximo medido
             const wordWidth = word.chars.reduce((acc, c) => {
                 return acc + (c.char === ' ' ? cw * 0.4 : cw);
             }, 0);

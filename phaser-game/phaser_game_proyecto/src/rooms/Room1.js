@@ -1,6 +1,6 @@
 import BaseGameScene from '../scenes/BaseGameScene.js';
 
-export default class Room1 extends BaseGameScene {
+export default class RoomX extends BaseGameScene {
     constructor() {
         super('Room1');
     }
@@ -13,12 +13,10 @@ export default class Room1 extends BaseGameScene {
             music: 'tenna_island.ogg',
             displayName: 'Room 1',
             playerSpawn: { x: 200, y: 200 },
-            savepoints: [
-                { x: 150, y: 150 }
-            ],
+           
             monsters: [
-                { type: 'cat', x: 100, y: 100 },
-                { type: 'silentcat', x: 200, y: 100 },
+               // { type: 'cat', x: 100, y: 100 },
+                // { type: 'silentcat', x: 200, y: 100 },
                 //{ type: 'flower',  x: 300, y: 200 },
                 //{ type: 'spear',   x: 300, y: 100 },
 

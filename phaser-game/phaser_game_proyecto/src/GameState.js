@@ -14,6 +14,7 @@ const GameState = {
     roomActual    : 'Room1',
     playerSpawn   : { x: 200, y: 200 },
     monstersDead  : [],   // array de strings: 'Room1_cat_0', 'MazmorraRoom1_lizard_1', etc.
+    npcsVistos    : [],   // array de strings: 'room3_tenna', etc.
 
     // ─────────────────────────────────────────────
     // GUARDAR en localStorage + servidor PHP
@@ -28,6 +29,7 @@ const GameState = {
             roomActual  : this.roomActual,
             playerSpawn : this.playerSpawn,
             monstersDead: this.monstersDead,
+            npcsVistos  : this.npcsVistos,
             timestamp   : new Date().toISOString()
         };
 
@@ -64,6 +66,7 @@ const GameState = {
             this.roomActual   = data.roomActual   ?? 'Room1';
             this.playerSpawn  = data.playerSpawn  ?? { x: 200, y: 200 };
             this.monstersDead = data.monstersDead ?? [];
+            this.npcsVistos   = data.npcsVistos   ?? [];
             return true;
         } catch (e) {
             console.warn('[Save] Error al cargar save:', e);
@@ -84,7 +87,6 @@ const GameState = {
     },
 
     // Registra un monstruo como derrotado
-    // id: string único, ej. 'Room1_cat_0'
     matarMonstruo(id) {
         if (!this.monstersDead.includes(id)) {
             this.monstersDead.push(id);
@@ -93,6 +95,17 @@ const GameState = {
 
     estaMuerto(id) {
         return this.monstersDead.includes(id);
+    },
+
+    // Registra un NPC como ya visto/hablado
+    verNpc(id) {
+        if (!this.npcsVistos.includes(id)) {
+            this.npcsVistos.push(id);
+        }
+    },
+
+    estaVisto(id) {
+        return this.npcsVistos.includes(id);
     }
 };
 

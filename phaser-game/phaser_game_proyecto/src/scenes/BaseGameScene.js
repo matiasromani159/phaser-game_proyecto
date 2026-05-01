@@ -277,6 +277,9 @@ export default class BaseGameScene extends Phaser.Scene {
     // UPDATE
     // ─────────────────────────────────────────────
     update(time, delta) {
+        if (Phaser.Input.Keyboard.JustDown(this.input.keyboard.addKey('P'))) {
+            console.log(`x: ${Math.round(this.player.x)}, y: ${Math.round(this.player.y)}`);
+        }
         if (this.gameIsOver || this.cambiandoRoom || this.enSaveMenu) return;
 
         if (this.dialogue.update()) return;
@@ -310,12 +313,30 @@ export default class BaseGameScene extends Phaser.Scene {
         if (zPressed) {
             if (this._estaCercaDeSavepoint()) {
                 this.abrirSaveMenu();
+            } else if (this._estaCercaDeNpc()) {
+                this._interactuarConNpc(); // ← override en rooms hijas
             } else {
                 this.player.attack();
             }
         }
 
         this._checkBordes();
+    }
+
+    // ─────────────────────────────────────────────
+    // NPC — override en rooms hijas
+    // ─────────────────────────────────────────────
+    _estaCercaDeNpc() {
+        if (!this.npc) return false;
+        const RANGO = 60;
+        return Phaser.Math.Distance.Between(
+            this.player.x, this.player.y,
+            this.npc.x, this.npc.y
+        ) < RANGO;
+    }
+
+    _interactuarConNpc() {
+        // Override en rooms hijas que tengan NPC con diálogo por Z
     }
 
     // ─────────────────────────────────────────────
@@ -362,7 +383,8 @@ export default class BaseGameScene extends Phaser.Scene {
         cfg.savepoints.forEach(sp => {
             const sprite = this.physics.add.sprite(sp.x, sp.y, 'savepoint_0');
             sprite.play('savepoint-idle');
-            sprite.setScale(1.5);
+            sprite.setDisplaySize(36, 36);
+            sprite.setSize(20, 20);
             sprite.setImmovable(true);
             sprite.body.allowGravity = false;
             this.savepointSprites.push(sprite);
@@ -420,6 +442,8 @@ export default class BaseGameScene extends Phaser.Scene {
         this.wallsLayer  = this.map.createLayer('walls', tileset, 0, 0);
         this.wallsLayer.setCollisionByProperty({ collides: true });
 
+        this._crearColisionDiagonal();
+
         this.animatedTiles = [];
         const mapJSON     = this.cache.tilemap.get(`map_${roomKey}`).data;
         const tilesetJSON = mapJSON.tilesets[0];
@@ -448,6 +472,66 @@ export default class BaseGameScene extends Phaser.Scene {
         }
     }
 
+    _crearColisionDiagonal() {
+        const TW = this.map.tileWidth;
+        const TH = this.map.tileHeight;
+
+        const DIAGONALES = {
+            265: 'top-right',
+            297: 'right',
+            313: 'bottom-right',
+            233: 'bottom-left'
+        };
+
+        this.wallsLayer.forEachTile(tile => {
+            if (DIAGONALES[tile.index] !== undefined) {
+                tile.setCollision(false);
+            }
+        });
+
+        this.diagonalBodies = this.physics.add.staticGroup();
+
+        this.wallsLayer.forEachTile(tile => {
+            const orientation = DIAGONALES[tile.index];
+            if (orientation === undefined) return;
+
+            const tx   = tile.pixelX;
+            const ty   = tile.pixelY;
+            const step = TW / 3;
+
+            const configs = {
+                'top-right': [
+                    { x: tx + step * 2, y: ty,                w: step,     h: TH / 3 },
+                    { x: tx + step,     y: ty + TH / 3,       w: step * 2, h: TH / 3 },
+                    { x: tx,            y: ty + (TH / 3) * 2, w: TW,       h: TH / 3 },
+                ],
+                'right': [
+                    { x: tx + step * 2, y: ty,                w: step,     h: TH / 3 },
+                    { x: tx + step,     y: ty + TH / 3,       w: step * 2, h: TH / 3 },
+                    { x: tx + step * 2, y: ty + (TH / 3) * 2, w: step,    h: TH / 3 },
+                ],
+                'bottom-right': [
+                    { x: tx,            y: ty,                w: TW,       h: TH / 3 },
+                    { x: tx + step,     y: ty + TH / 3,       w: step * 2, h: TH / 3 },
+                    { x: tx + step * 2, y: ty + (TH / 3) * 2, w: step,    h: TH / 3 },
+                ],
+                'bottom-left': [
+                    { x: tx,            y: ty,                w: TW,       h: TH / 3 },
+                    { x: tx,            y: ty + TH / 3,       w: step * 2, h: TH / 3 },
+                    { x: tx,            y: ty + (TH / 3) * 2, w: step,    h: TH / 3 },
+                ],
+            };
+
+            configs[orientation].forEach(r => {
+                const body = this.diagonalBodies.create(r.x + r.w / 2, r.y + r.h / 2, null);
+                body.setVisible(false);
+                body.displayWidth  = r.w;
+                body.displayHeight = r.h;
+                body.refreshBody();
+            });
+        });
+    }
+
     _crearAnimaciones() {
         const makeAnim = (key, frames, fps = 6, repeat = -1) => {
             if (this.anims.exists(key)) return;
@@ -468,11 +552,9 @@ export default class BaseGameScene extends Phaser.Scene {
         makeAnim('flower-idle',      ['flower_0', 'flower_1'], 4);
         makeAnim('flower-telegraph', ['telegraph_0', 'telegraph_1'], 8);
 
-        // ── MonsterCatSinging ─────────────────────────────────
         makeAnim('cat-singing',      ['cat_singing_0',      'cat_singing_1'],      6);
         makeAnim('cat-singing-hurt', ['cat_singing_hurt_0', 'cat_singing_hurt_1'], 6);
 
-        // ── MonsterBlueFish ───────────────────────────────────
         ['r', 'l', 'u', 'd'].forEach(dir => {
             makeAnim(`bluefish-${dir}`, [`bluefish_${dir}_0`, `bluefish_${dir}_1`], 6);
         });
@@ -483,7 +565,9 @@ export default class BaseGameScene extends Phaser.Scene {
         this.physics.add.collider(this.player,   this.wallsLayer);
         this.physics.add.collider(this.monsters, this.wallsLayer);
 
-        // Jugador ← contacto con monstruo
+        this.physics.add.collider(this.player,   this.diagonalBodies);
+        this.physics.add.collider(this.monsters, this.diagonalBodies);
+
         this.physics.add.overlap(this.player, this.monsters, (player, monster) => {
             const ahora = this.time.now;
             if (ahora - player.lastDamageTime > 1000) {
@@ -494,7 +578,6 @@ export default class BaseGameScene extends Phaser.Scene {
             }
         });
 
-        // Ataque del jugador → monstruo
         this.physics.add.overlap(this.player.attackHitbox, this.monsters, (hitbox, monster) => {
             if (monster.recibirDaño) {
                 const murio = monster.recibirDaño(10, this.player.x, this.player.y);
@@ -509,7 +592,6 @@ export default class BaseGameScene extends Phaser.Scene {
             }
         });
 
-        // Jugador ← pellets
         this.physics.add.overlap(this.player, this.pellets, (player, pellet) => {
             const ahora = this.time.now;
             if (ahora - player.lastDamageTime > 1000) {
@@ -521,12 +603,10 @@ export default class BaseGameScene extends Phaser.Scene {
             pellet.destroy();
         });
 
-        // Ataque del jugador → pellets
         this.physics.add.overlap(this.player.attackHitbox, this.pellets, (hitbox, pellet) => {
             pellet.destroy();
         });
 
-        // Jugador recoge HealthDrop al tocarlo
         this.physics.add.overlap(
             this.player,
             this.healthDrops,

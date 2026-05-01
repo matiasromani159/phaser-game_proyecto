@@ -74,6 +74,13 @@ this.healthBarSprite = scene.add
     update(cursors) {
         if (this.isDead) return;
 
+        if (this.blocked) {
+    this.setVelocity(0);
+    this.anims.stop();
+    this._setIdleTexture(this.lastDir);
+    this.drawHealthBar();
+    return;
+}
         if (this.swordbuffer > 0) {
             this._tickSword(cursors);
         }

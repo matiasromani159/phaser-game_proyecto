@@ -47,50 +47,52 @@ export default class MonsterCatSinging extends MonsterBase {
         if (this._hurtSprite) this._hurtSprite.play('cat-singing-hurt', true);
     }
 
-    recibirDaño(cantidad) {
-        if (this.isDead) return;
+ recibirDaño(cantidad) {
+    if (this.isDead) return false;
 
-        const ahora = this.scene.time.now;
-        if (ahora - this._lastHitTime < HURT_DURATION) return;
-        this._lastHitTime = ahora;
+    const ahora = this.scene.time.now;
+    if (ahora - this._lastHitTime < HURT_DURATION) return false;
+    this._lastHitTime = ahora;
 
-        this.hp -= cantidad;
-        if (this.hp <= 0) { this.die(); return; }
+    this.hp -= cantidad;
+    if (this.hp <= 0) { this.die(); return true; } // ← muerto
 
-        this._isHurting = true;
-        this.moving     = false;
-        this.movecon    = 0;
-        this.movetimer  = 0;
-        this.setVelocity(0, 0);
+    this._isHurting = true;
+    this.moving     = false;
+    this.movecon    = 0;
+    this.movetimer  = 0;
+    this.setVelocity(0, 0);
 
-        this._hurtTimer = 0;
-        if (this._hurtEvent) this._hurtEvent.remove();
+    this._hurtTimer = 0;
+    if (this._hurtEvent) this._hurtEvent.remove();
 
-        this._hurtEvent = this.scene.time.addEvent({
-            delay:  33,
-            repeat: Math.floor(HURT_DURATION / 33),
-            callback: () => {
-                if (!this.active || this.isDead) {
-                    if (this._hurtSprite) this._hurtSprite.setAlpha(0);
-                    return;
-                }
-                this._hurtTimer++;
-                if (this._hurtSprite)
-                    this._hurtSprite.setAlpha(this._hurtTimer % 2 === 0 ? 1 : 0);
-            },
-            callbackScope: this
-        });
-
-        this.scene.time.delayedCall(HURT_DURATION, () => {
-            this._isHurting = false;
-            if (this._hurtSprite) this._hurtSprite.setAlpha(0);
-            if (this._hurtEvent) { this._hurtEvent.remove(); this._hurtEvent = null; }
-            if (this.active && !this.isDead) {
-                this.x = Math.round(this.x / CELL) * CELL;
-                this.y = Math.round(this.y / CELL) * CELL;
+    this._hurtEvent = this.scene.time.addEvent({
+        delay:  33,
+        repeat: Math.floor(HURT_DURATION / 33),
+        callback: () => {
+            if (!this.active || this.isDead) {
+                if (this._hurtSprite) this._hurtSprite.setAlpha(0);
+                return;
             }
-        });
-    }
+            this._hurtTimer++;
+            if (this._hurtSprite)
+                this._hurtSprite.setAlpha(this._hurtTimer % 2 === 0 ? 1 : 0);
+        },
+        callbackScope: this
+    });
+
+    this.scene.time.delayedCall(HURT_DURATION, () => {
+        this._isHurting = false;
+        if (this._hurtSprite) this._hurtSprite.setAlpha(0);
+        if (this._hurtEvent) { this._hurtEvent.remove(); this._hurtEvent = null; }
+        if (this.active && !this.isDead) {
+            this.x = Math.round(this.x / CELL) * CELL;
+            this.y = Math.round(this.y / CELL) * CELL;
+        }
+    });
+
+    return false; // ← herido pero vivo
+}
 
     actualizar(player) {
         if (this.isDead) return;
