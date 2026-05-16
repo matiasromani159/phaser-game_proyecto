@@ -21,18 +21,6 @@
  */
 
 export default class DialogueSystem {
-    /**
-     * @param {Phaser.Scene} scene
-     * @param {object} [opts]
-     * @param {string}  opts.textSound  - sonido por letra       (default 'snd_board_text_main')
-     * @param {string}  opts.endSound   - sonido al terminar      (default 'snd_board_text_main_end')
-     * @param {string}  opts.liftSound  - sonido de apertura      (default 'snd_board_lift')
-     * @param {number}  opts.rate       - frames entre letras     (default 2)
-     * @param {string}  opts.fontFamily - fuente                  (default 'UndertaleFont')
-     * @param {number}  opts.fontSize   - tamaño fuente px        (default 16)
-     * @param {number}  opts.boxColor   - color fondo caja hex    (default 0x000000)
-     * @param {string}  opts.textColor  - color texto             (default '#ffffff')
-     */
     constructor(scene, opts = {}) {
         this.scene      = scene;
         this.textSound  = opts.textSound  ?? 'snd_board_text_main';
@@ -40,22 +28,21 @@ export default class DialogueSystem {
         this.liftSound  = opts.liftSound  ?? 'snd_board_lift';
         this.rate       = opts.rate       ?? 2;
         this.fontFamily = opts.fontFamily ?? 'UndertaleFont';
-        this.fontSize   = opts.fontSize   ?? 24;
+        this.fontSize   = opts.fontSize   ?? 16;
         this.boxColor   = opts.boxColor   ?? 0x000000;
         this.textColor  = opts.textColor  ?? '#ffffff';
 
         this._active    = false;
-        this._closing   = false; // true durante el tween de cierre
+        this._closing   = false;
         this._messages  = [];
         this._msgIndex  = 0;
         this._container = null;
         this._writer    = null;
         this._onDone    = null;
 
-        // Dimensiones — caja se adapta al fontSize
         const camW           = scene.cameras.main.width;
         this.BOX_W           = camW - 16;
-        this.BOX_H           = Math.max(85, this.fontSize * 4);
+        this.BOX_H           = Math.max(70, this.fontSize * 4);
         this.WRITER_OFFSET_X = 18;
         this.WRITER_OFFSET_Y = Math.round(this.BOX_H * 0.15);
         this.TRIANGLE_X      = this.BOX_W - 20;
@@ -78,19 +65,27 @@ export default class DialogueSystem {
         this._build();
     }
 
+    // Igual que show() pero espera automáticamente a que el diálogo anterior termine
+    showQueued(messages, callback = null) {
+        if (!this._active && !this._closing) {
+            this.show(messages, callback);
+            return;
+        }
+        this.scene.time.delayedCall(50, () => {
+            this.showQueued(messages, callback);
+        });
+    }
+
     get isActive() { return this._active; }
 
     update() {
-        // Bloquear input si está cerrando (tween de salida)
         if (!this._active) return false;
-        if (this._closing) return true; // sigue bloqueando el juego pero sin procesar input
-
+        if (this._closing) return true;
         if (!this._writer) return false;
 
         const zDown = Phaser.Input.Keyboard.JustDown(this._keyZ);
         if (zDown && !this._writer.typing && this._writer.reachedEnd && this._writer.halted) {
             this._nextMessage();
-            // _nextMessage puede haber arrancado el cierre — salir sin hacer tick
             return true;
         }
 
@@ -185,7 +180,6 @@ export default class DialogueSystem {
     }
 
     _close() {
-        // Destruir el writer inmediatamente para evitar ticks huérfanos
         if (this._writer) {
             this._writer.destroy();
             this._writer = null;
@@ -230,6 +224,29 @@ const COLOR_MAP = {
     '0': null
 };
 
+// Cache global de anchos medidos
+const _charWidthCache = {};
+
+function _medirCharWidth(scene, fontFamily, fontSize) {
+    const key = `${fontFamily}_${fontSize}`;
+    if (_charWidthCache[key]) return _charWidthCache[key];
+
+    const chars = 'WMQABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+    const probe = scene.add.text(-9999, -9999, ' ', {
+        fontFamily, fontSize: `${fontSize}px`, resolution: 10
+    });
+
+    let maxW = 0;
+    for (const c of chars) {
+        probe.setText(c);
+        if (probe.width > maxW) maxW = probe.width;
+    }
+    probe.destroy();
+
+    _charWidthCache[key] = maxW;
+    return maxW;
+}
+
 class BoardWriter {
     constructor(scene, container, rawText, opts) {
         this.scene     = scene;
@@ -243,7 +260,7 @@ class BoardWriter {
         this._triangle   = null;
         this._sinerTimer = 0;
 
-        this._charWidth = opts.fontSize * 0.42;
+        this._charWidth = _medirCharWidth(scene, opts.fontFamily, opts.fontSize);
 
         this._tokens  = this._parseWithWrap(rawText);
         this._pos     = 0;
@@ -388,10 +405,10 @@ class BoardWriter {
     _frameToMs(frames) { return Math.max(1, frames) * (1000 / 60); }
 
     _parseWithWrap(raw) {
-        const words   = this._splitWords(raw);
-        const tokens  = [];
-        const maxW    = this.opts.maxWidth;
-        const cw      = this._charWidth;
+        const words  = this._splitWords(raw);
+        const tokens = [];
+        const maxW   = this.opts.maxWidth;
+        const cw     = this._charWidth;
 
         let lineWidth = 0;
 
@@ -404,7 +421,9 @@ class BoardWriter {
                 return;
             }
 
-            const wordWidth = word.chars.reduce((acc, c) => acc + (c.char === ' ' ? cw * 0.5 : cw), 0);
+            const wordWidth = word.chars.reduce((acc, c) => {
+                return acc + (c.char === ' ' ? cw * 0.4 : cw);
+            }, 0);
 
             if (lineWidth > 0 && lineWidth + wordWidth > maxW) {
                 tokens.push({ type: 'newline' });
@@ -413,7 +432,7 @@ class BoardWriter {
 
             word.chars.forEach(c => {
                 tokens.push(c);
-                lineWidth += c.char === ' ' ? cw * 0.5 : cw;
+                lineWidth += c.char === ' ' ? cw * 0.4 : cw;
             });
         });
 
@@ -426,9 +445,9 @@ class BoardWriter {
     }
 
     _splitWords(raw) {
-        const result   = [];
-        let i          = 0;
-        let color      = null;
+        const result    = [];
+        let i           = 0;
+        let color       = null;
         let currentWord = null;
 
         const flushWord = () => {

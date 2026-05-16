@@ -1,3 +1,5 @@
+import GameState from '../GameState.js'; // ← ajusta la ruta si es necesario
+
 export default class Player extends Phaser.Physics.Arcade.Sprite {
 
     constructor(scene, x, y) {
@@ -6,16 +8,17 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         scene.add.existing(this);
         scene.physics.add.existing(this);
 
-        this.vida    = 100;
-        this.vidaMax = 100;
+        // ── Vida leída desde GameState (persiste entre escenas) ──
+        this.vidaMax = GameState.playerHPMax;
+        this.vida    = GameState.playerHP;
 
         // Barra de vida
-        this.barra = scene.add.graphics();
-        this.barra.setScrollFactor(0);
-        this.barra.setDepth(1);
-        this.healthBarSprite = scene.add
-            .sprite(20, 20, 'healthbar')
-            .setOrigin(0, 0).setScrollFactor(0).setScale(2).setDepth(0);
+      this.barra = scene.add.graphics();
+this.barra.setScrollFactor(0);
+this.barra.setDepth(100);                                          // ← subir
+this.healthBarSprite = scene.add
+    .sprite(20, 20, 'healthbar')
+    .setOrigin(0, 0).setScrollFactor(0).setScale(2).setDepth(99);
 
         this.speed   = 150;
         this.lastDir = 'down';
@@ -25,6 +28,10 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         // Origin base del sprite idle (16x16 centrado)
         this.setOrigin(0.5, 0.5);
 
+        // Body fijo: 16x16 pre-escala (= 36x36 en pantalla con scale 2.25)
+        // El offset varía según la dirección de ataque — ver _setBodyForDir()
+        this._setBodyForDir('down');
+
         // ── Invencibilidad ────────────────────────────────────
         this.isInvincible   = false;
         this.lastDamageTime = 0;
@@ -33,8 +40,6 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         this.isKnockedBack = false;
 
         // ── Ataque ────────────────────────────────────────────
-        // GML: swordbuffer = 8 a 30fps → 16 a 60fps
-        // Durante el ataque canfreemove = 0 → posición anclada
         this.swordbuffer  = 0;
         this.swordfacing  = 'down';
         this.isAttacking  = false;
@@ -53,11 +58,29 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     // ─────────────────────────────────────────────────────────
+    // BODY FIJO POR DIRECCIÓN
+    // ─────────────────────────────────────────────────────────
+    _setBodyForDir(dir) {
+        switch (dir) {
+            case 'left':  this.setBodySize(16, 16); this.setOffset(16, 0);  break;
+            case 'up':    this.setBodySize(16, 16); this.setOffset(0,  16); break;
+            default:      this.setBodySize(16, 16); this.setOffset(0,  0);  break;
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────
     // UPDATE
     // ─────────────────────────────────────────────────────────
     update(cursors) {
         if (this.isDead) return;
 
+        if (this.blocked) {
+    this.setVelocity(0);
+    this.anims.stop();
+    this._setIdleTexture(this.lastDir);
+    this.drawHealthBar();
+    return;
+}
         if (this.swordbuffer > 0) {
             this._tickSword(cursors);
         }
@@ -65,7 +88,6 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         if (this.isKnockedBack || this.isAttacking) {
             if (this.isAttacking) {
                 this.setVelocity(0);
-                // Anclar posición (= canfreemove=0 en Deltarune)
                 this.x = this._attackLockX;
                 this.y = this._attackLockY;
                 this._moverHitbox(this.swordfacing);
@@ -75,8 +97,8 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         }
 
         // ── Movimiento libre ──────────────────────────────────
-        // Restaurar origin idle al salir del ataque
         this.setOrigin(0.5, 0.5);
+        this._setBodyForDir('idle');
 
         this.setVelocity(0);
         let moving = false;
@@ -126,20 +148,20 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
 
         this.lastDir = this.swordfacing;
 
-        // Sprite frame según buffer (GML x2)
+        // Sprite frame según buffer
         let frameIdx;
         if      (this.swordbuffer >= 12) frameIdx = 0;
         else if (this.swordbuffer >= 6)  frameIdx = 1;
         else if (this.swordbuffer >= 4)  frameIdx = 2;
         else                             frameIdx = 0;
 
-        // Aplicar textura y origin correcto para que el cuerpo
-        // de Kris quede anclado visualmente en su posición
         this._setAttackTexture(this.swordfacing, frameIdx);
 
-        // Crear hitbox en frame 12 (= GML frame 6)
+        // Crear hitbox en frame 12 solo si no hay pared delante
         if (this.swordbuffer === 12) {
-            this._activarHitbox(this.swordfacing);
+            if (!this._hayParedEnfrente(this.swordfacing)) {
+                this._activarHitbox(this.swordfacing);
+            }
         }
 
         if (canRedirect && this.swordbuffer !== 12) {
@@ -155,21 +177,28 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         }
     }
 
+    _hayParedEnfrente(dir) {
+        if (!this.scene.wallsLayer) return false;
+
+        const DIST = 20;
+        const offsets = {
+            right: { x:  DIST, y: 0     },
+            left:  { x: -DIST, y: 0     },
+            down:  { x: 0,     y:  DIST },
+            up:    { x: 0,     y: -DIST },
+        };
+
+        const off  = offsets[dir];
+        const tile = this.scene.wallsLayer.getTileAtWorldXY(
+            this.x + off.x,
+            this.y + off.y
+        );
+
+        return tile && tile.collides;
+    }
+
     // ─────────────────────────────────────────────────────────
-    // TEXTURA DE ATAQUE CON ORIGIN AJUSTADO
-    //
-    // El sprite idle es 16x16 con origin (0.5, 0.5).
-    // El centro del cuerpo de Kris está en (8, 8) del sprite.
-    //
-    // Al atacar el sprite crece en la dirección del ataque:
-    //   right:  32x16 → cuerpo en los primeros 16px (izquierda)
-    //           origin.x = 8/32 = 0.25  (para que x=0.25*32=8 coincida)
-    //   left:   32x16 → cuerpo en los últimos 16px (derecha)
-    //           origin.x = 24/32 = 0.75
-    //   down:   16x32 → cuerpo en los primeros 16px (arriba)
-    //           origin.y = 8/32 = 0.25
-    //   up:     16x32 → cuerpo en los últimos 16px (abajo)
-    //           origin.y = 24/32 = 0.75
+    // TEXTURA DE ATAQUE CON ORIGIN Y BODY AJUSTADOS
     // ─────────────────────────────────────────────────────────
     _setAttackTexture(dir, frameIdx) {
         this.setTexture(`${dir}Attack${frameIdx}`);
@@ -179,6 +208,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
             case 'down':  this.setOrigin(0.5,  0.25); break;
             case 'up':    this.setOrigin(0.5,  0.75); break;
         }
+        this._setBodyForDir(dir);
     }
 
     // ─────────────────────────────────────────────────────────
@@ -191,7 +221,6 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         this.swordbuffer  = 16;
         this.swordfacing  = this.lastDir;
 
-        // Guardar posición — no se moverá hasta que acabe
         this._attackLockX = this.x;
         this._attackLockY = this.y;
 
@@ -199,7 +228,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     // ─────────────────────────────────────────────────────────
-    // HELPERS DEL HITBOX
+    // HELPERS DEL HITBOX DE ATAQUE
     // ─────────────────────────────────────────────────────────
     _hitboxConfig(dir) {
         const BASE = 36;
@@ -239,9 +268,11 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         if (this.isDead || this.isInvincible) return;
 
         this.vida -= dano;
+        GameState.playerHP = this.vida; // ← guardar siempre en GameState
 
         if (this.vida <= 0) {
             this.vida = 0;
+            GameState.playerHP = 0;
             this.die();
             return;
         }
@@ -306,5 +337,6 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
             case 'left':  this.setTexture('left0');  break;
             case 'right': this.setTexture('right0'); break;
         }
+        this._setBodyForDir('idle');
     }
 }

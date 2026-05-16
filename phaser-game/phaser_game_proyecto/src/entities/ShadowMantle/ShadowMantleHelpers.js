@@ -13,7 +13,7 @@ export class ShadowMantleFire3 extends Phaser.Physics.Arcade.Sprite {
         scene.physics.add.existing(this);
 
         this.body.allowGravity = false;
-        this.setScale(1);
+        this.setScale(2);
 
         const dir  = opts.direction ?? 0;
         const spd  = opts.speed     ?? 2;
@@ -26,9 +26,9 @@ export class ShadowMantleFire3 extends Phaser.Physics.Arcade.Sprite {
         this._timer       = 0;
         this.activeHitbox = false;
         this._activetimer = opts.activetimer ?? 20;
-        this.damage       = 1;
-        this.destroyonhit = false; // No se destruye al tocar al jugador
-        this._hitCooldown = 0;     // Frames de invencibilidad tras golpear
+        this.damage       = 10;
+        this.destroyonhit = false;
+        this._hitCooldown = 0;
         this.isDead       = false;
 
         this._dirRad  = Phaser.Math.DegToRad(dir);
@@ -51,13 +51,11 @@ export class ShadowMantleFire3 extends Phaser.Physics.Arcade.Sprite {
 
         this._timer++;
 
-        // Bajar cooldown de hit
         if (this._hitCooldown > 0) {
             this._hitCooldown--;
             if (this._hitCooldown === 0) this.activeHitbox = true;
         }
 
-        // Tipo 0: parpadea hasta activetimer, luego activa hitbox
         if (this._type === 0) {
             if (this._timer <= this._activetimer) {
                 this.alpha = this.alpha === 1 ? 0 : 1;
@@ -68,13 +66,12 @@ export class ShadowMantleFire3 extends Phaser.Physics.Arcade.Sprite {
             }
         }
 
-        // Tipo 1: hitbox activa desde el primer frame
         if (this._type === 1 && this._timer === 1) {
             this.activeHitbox = true;
         }
 
-        this.body.velocity.x += Math.cos(this._gravRad) * this._gravity * 15;
-        this.body.velocity.y += Math.sin(this._gravRad) * this._gravity * 15;
+        this.body.velocity.x += Math.cos(this._gravRad) * this._gravity * 7.5;
+        this.body.velocity.y += Math.sin(this._gravRad) * this._gravity * 7.5;
 
         const frame = Math.floor((this._timer * 0.125) % 3);
         this.setTexture(`mantle_fire_${frame}`);
@@ -86,7 +83,6 @@ export class ShadowMantleFire3 extends Phaser.Physics.Arcade.Sprite {
     }
 
     onHit() {
-        // No destruir — pausar hitbox 20 frames
         this._hitCooldown = 20;
         this.activeHitbox = false;
     }
@@ -108,8 +104,8 @@ export class ShadowMantleGroundfire extends Phaser.Physics.Arcade.Sprite {
 
         this._timer       = 0;
         this.activeHitbox = true;
-        this.damage       = 2;
-        this.destroyonhit = false; // No se destruye al tocar al jugador
+        this.damage       = 5;
+        this.destroyonhit = false;
         this._hitCooldown = 0;
         this.isDead       = false;
 
@@ -121,7 +117,6 @@ export class ShadowMantleGroundfire extends Phaser.Physics.Arcade.Sprite {
 
         this._timer++;
 
-        // Bajar cooldown de hit
         if (this._hitCooldown > 0) {
             this._hitCooldown--;
             if (this._hitCooldown === 0) this.activeHitbox = true;
@@ -167,8 +162,8 @@ export class ShadowMantleClone extends Phaser.Physics.Arcade.Sprite {
         this._dashtimer       = 0;
         this._dashcon         = 1;
         this.isDead           = false;
-        this.damage           = 2;
-        this.destroyonhit     = false; // No se destruye al tocar al jugador
+        this.damage           = 10;
+        this.destroyonhit     = false;
         this._hitCooldown     = 0;
 
         this._onFireSprite = onFireSprite;
@@ -184,7 +179,6 @@ export class ShadowMantleClone extends Phaser.Physics.Arcade.Sprite {
         const bounds  = this.scene.physics.world.bounds;
         const losses  = this.scene.registry.get('shadow_mantle_losses') ?? 0;
 
-        // Bajar cooldown de hit
         if (this._hitCooldown > 0) {
             this._hitCooldown--;
         }
@@ -199,6 +193,21 @@ export class ShadowMantleClone extends Phaser.Physics.Arcade.Sprite {
             this._dashSpeed   = 2;
             this._dashtimer   = 28;
             this._dashcon     = 2;
+
+            // ── Sonido de dash igual que el boss principal ────
+            const scene = this.scene;
+            if (scene.sound.get('snd_wing')) {
+                scene.sound.play('snd_wing', { volume: 0.8 });
+            }
+            if (scene.sound.get('snd_board_mantle_dash_slow')) {
+                scene.time.delayedCall(200, () => {
+                    if (!this.isDead && scene.sound.get('snd_board_mantle_dash_slow')) {
+                        scene.sound.play('snd_board_mantle_dash_slow', {
+                            detune: Phaser.Math.Between(-50, 50)
+                        });
+                    }
+                });
+            }
         }
 
         if (this._dashcon === 2) {
@@ -267,15 +276,12 @@ export class ShadowMantleEnemySpawn {
         const player  = scene.player;
         const TILE    = 36;
 
-        // Leer celdas libres directamente del tilemap en runtime
-        // En la capa walls: índice -1 o 0 = libre, cualquier otro = pared
         const FREE_CELLS = [];
         if (scene.wallsLayer) {
             const layer = scene.wallsLayer.layer;
             for (let row = 2; row <= 7; row++) {
                 for (let col = 1; col <= 10; col++) {
                     const tile = layer.data[row][col];
-                    // tile.index -1 = vacío, 0 = libre en Tiled (valor 0 en JSON)
                     if (tile && tile.index <= 0) {
                         FREE_CELLS.push({
                             x: col * TILE,
@@ -297,7 +303,6 @@ export class ShadowMantleEnemySpawn {
 
         const pos = candidates[Phaser.Math.Between(0, candidates.length - 1)];
 
-        // El boss se mueve exactamente donde spawnea el enemy (misma pos top-left)
         this._boss.targetx = pos.x;
         this._boss.targety = pos.y;
         this._boss.movestyle = 'to point and stop';

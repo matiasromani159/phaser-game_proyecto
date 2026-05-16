@@ -225,45 +225,76 @@ export class ShadowMantleFireController {
     }
 
     _updateType8() {
-        this._spinA      += 0.25;         // 0.5/2
+        // GML: spin_a += 0.5 a 30fps → 0.25 a 60fps
+        this._spinA      += 0.25;
         this._spinSpeed   = 1.6 + (Math.sin(this._spinA / 6) * 1.2);
         if (this._spinSpeed < 1.5) this._spinSpeed = 1.5;
-        this._angle      += this._spinSpeed * 0.5;  // /2
+        // GML: angle += spin_speed a 30fps → *= 0.5 a 60fps
+        this._angle      += this._spinSpeed * 1;
 
-        // Bombas en spinA equivalente a 40 y 100 a 30fps → 20 y 50 a 60fps
-        if (this._spinA === 20 || this._spinA === 50) {
-            const tx = 160 + Phaser.Math.Between(0,9) * 32;
-            const ty = 96  + Phaser.Math.Between(0,4) * 32;
-            const bomb = new ShadowMantleBomb(this.scene, this._boss.x+16, this._boss.y+16, tx, ty);
-            this.scene.bossBullets.add(bomb);
-        }
-
-        if (this._spinA === 35) {         // 70/2
-            const bomb = new ShadowMantleBomb(
-                this.scene, this._boss.x+16, this._boss.y+29,
-                464, 160 + Phaser.Math.Between(0,2)*32 + 29
-            );
+        // GML: spin_a == 40 || 100 || 70 a 30fps → 20 || 50 || 35 a 60fps
+        if (this._spinA === 20 || this._spinA === 50 || this._spinA === 35) {
+            const pos  = this._getRandomValidPos();
+            const bomb = new ShadowMantleBomb(this.scene, this._boss.x, this._boss.y, pos.x, pos.y);
             this.scene.bossBullets.add(bomb);
         }
 
         this._fireballTimer++;
 
-        if (this._fireballTimer > 60 && this._fireballCount < 50) {  // 30*2
+        // GML: fireballtimer > 30 a 30fps → > 60 a 60fps
+        if (this._fireballTimer > 60 && this._fireballCount < 50) {
             for (let i = 0; i < 3; i++) {
+                // GML: 3 bolas separadas 120°, rotando con _angle
                 const dir = (i * 120) + this._angle;
                 const fb  = new ShadowMantleFire3(
                     this.scene,
-                    this._boss.x + 16 + Math.cos(Phaser.Math.DegToRad(dir)) * 24,
-                    this._boss.y + 16 + Math.sin(Phaser.Math.DegToRad(dir)) * 24,
-                    { direction: dir, speed: 0, gravity: 0.7, activetimer: 20, type: 1 }
+                    this._boss.x + Math.cos(Phaser.Math.DegToRad(dir)) * 24,
+                    this._boss.y + Math.sin(Phaser.Math.DegToRad(dir)) * 24,
+                    {
+                        direction:   dir,
+                        speed:       0,
+                        gravity:     0.7,   // GML: gravity = 0.7, gravity_direction = dir (misma dirección)
+                        activetimer: 20,    // GML: activetimer = 10 * 2 = 20 a 60fps
+                        type:        1
+                    }
                 );
                 this.scene.bossBullets.add(fb); fb.init();
             }
             this._fireballCount++;
-            this._fireballTimer -= 8;     // 4*2
+            this._fireballTimer -= 5;       // GML: -= 4 * 2 = 8 a 60fps
         }
 
-        if (this._fireballTimer >= 64) this._destroy();  // 32*2
+        // GML: fireballtimer >= 32 a 30fps → 64 a 60fps
+        if (this._fireballTimer >= 64) this._destroy();
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // Devuelve una posición válida dentro del mapa (sin paredes
+    // y lejos del jugador), igual que _spawnBomb en ShadowMantle
+    // ─────────────────────────────────────────────────────────
+    _getRandomValidPos() {
+        const TILE = 36;
+        const candidates = [];
+
+        for (let col = 1; col <= 10; col++) {
+            for (let row = 2; row <= 7; row++) {
+                const cx = col * TILE + TILE / 2;
+                const cy = row * TILE + TILE / 2;
+                if (this.scene.wallsLayer) {
+                    const tile = this.scene.wallsLayer.getTileAtWorldXY(cx, cy);
+                    if (tile && tile.collides) continue;
+                }
+                candidates.push({ x: cx, y: cy });
+            }
+        }
+
+        const player = this.scene.player;
+        const valid  = candidates.filter(c =>
+            Phaser.Math.Distance.Between(c.x, c.y, player.x, player.y) >= 50
+        );
+
+        const pool = valid.length > 0 ? valid : candidates;
+        return pool[Phaser.Math.Between(0, pool.length - 1)];
     }
 
     _createFire(type) {

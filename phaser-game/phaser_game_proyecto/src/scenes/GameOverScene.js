@@ -1,3 +1,5 @@
+import GameState from '../GameState.js'; // ← ajusta la ruta si es necesario
+
 export default class GameOverScene extends Phaser.Scene {
     constructor() {
         super('GameOverScene');
@@ -108,10 +110,10 @@ export default class GameOverScene extends Phaser.Scene {
     showTextLine(text, x, y, speed = 50) {
         this.textLine = this.add.text(x, y, '', {
             fontFamily: 'UndertaleFont',
-            fontSize: '16px',   // reducido para pantalla pequeña
+            fontSize: '16px',
             color: '#ffffff'
         })
-        .setOrigin(0.5, 0)     // centrado horizontalmente
+        .setOrigin(0.5, 0)
         .setResolution(10);
 
         this.textSound = this.sound.add('snd_txtasg');
@@ -139,11 +141,13 @@ export default class GameOverScene extends Phaser.Scene {
         });
     }
 
-  update() {
+ update() {
     if (this.canRestart && Phaser.Input.Keyboard.JustDown(this.keyZ)) {
         this.canRestart = false;
 
-        // Bajar volumen progresivamente en 1200ms (igual que el fade)
+        // Restaura HP desde el save
+        GameState.playerHP = GameState.playerHPMax;
+
         this.tweens.add({
             targets: this.gameoverSound,
             volume: 0,
@@ -152,12 +156,26 @@ export default class GameOverScene extends Phaser.Scene {
             onComplete: () => {
                 this.gameoverSound.stop();
                 this.scene.stop();
-                const lastRoom = this.game.registry.get('lastRoom') || 'Room1';
-                this.scene.start(lastRoom, { fromGameOver: true });
+
+                // ── Carga el último save ──────────────────
+                if (GameState.cargar()) {
+                    // Hay save → vuelve a la room guardada
+                    this.scene.start(GameState.roomActual, {
+                        segundos   : GameState.segundos,
+                        playerSpawn: GameState.playerSpawn,
+                        fromGameOver: true
+                    });
+                } else {
+                    // Sin save → empieza desde el principio
+                    this.scene.start('Room1', {
+                        segundos    : 0,
+                        playerSpawn : { x: 200, y: 200 },
+                        fromGameOver: true
+                    });
+                }
             }
         });
 
-        // Fade de pantalla al mismo tiempo
         this.cameras.main.fadeOut(1200, 0, 0, 0);
     }
 }
