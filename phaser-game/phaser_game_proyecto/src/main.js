@@ -17,6 +17,7 @@ import Room15 from './rooms/Room15.js';
 import Room16 from './rooms/Room16.js';
 import Room17 from './rooms/Room17.js';
 import Room18 from './rooms/Room18.js';
+import Room19 from './rooms/Room19.js';
 import GameOverScene from './scenes/GameOverScene.js';
 import AuthScene from './scenes/AuthScene.js';
 import LoginScene from './scenes/LoginScene.js';
@@ -24,24 +25,55 @@ import SaveScene from './scenes/SaveScene.js';
 import BossScene from './scenes/BossScene.js';
 import DebugRoomSelector from './scenes/DebugRoomSelector.js';
 import MazmorraRoom1 from './rooms/MazmorraRoom1.js';
+import MazmorraRoom2 from './rooms/MazmorraRoom2.js';
+import MazmorraRoom3 from './rooms/MazmorraRoom3.js';
+import MazmorraRoom4 from './rooms/MazmorraRoom4.js';
+import MazmorraRoom5 from './rooms/MazmorraRoom5.js';
+import MazmorraRoom6 from './rooms/MazmorraRoom6.js';
+import MazmorraRoom7 from './rooms/MazmorraRoom7.js';
+import MazmorraRoom8 from './rooms/MazmorraRoom8.js';
+import MazmorraRoom9 from './rooms/MazmorraRoom9.js';
+import MazmorraRoom10 from './rooms/MazmorraRoom10.js';
+import MazmorraRoom11 from './rooms/MazmorraRoom11.js';
+import MazmorraRoom12 from './rooms/MazmorraRoom12.js';
+import MazmorraRoom13 from './rooms/MazmorraRoom13.js';
+import AICompanionScene from './scenes/AICompanionScene.js';
+import GeminiService from './services/GeminiService.js';
 import MenuScene from './scenes/MenuScene.js';
+import ProfileScene from './scenes/ProfileScene.js'; 
+import ControlsScene from './scenes/ControlsScene.js';
 
-const IS_DEBUG = true;
+const GEMINI_API_KEY = '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';
+
+const IS_DEBUG = false;
 
 const config = {
     type: Phaser.AUTO,
     width: 432,
     height: 324,
-    zoom: 2,
+    
+    // ⬇️ CAMBIOS CLAVE AQUÍ ⬇️
+    // Eliminado: zoom: 2 (lo manejamos con scale.mode para mejor control)
+    
+    scale: {
+        mode: Phaser.Scale.FIT,              // Escala para caber en pantalla
+        autoCenter: Phaser.Scale.CENTER_BOTH, // Centrado horizontal y vertical
+        parent: 'game-container',             // ID del div contenedor (ajústalo)
+        width: 432,
+        height: 324,
+    },
+    
     scene: IS_DEBUG
-        ? [DebugRoomSelector, MenuScene, AuthScene, LoginScene, MazmorraRoom1, Room1, Room2, Room3, Room4, Room5, Room6, Room7, Room8, Room9, Room10, Room11, Room12, Room13, Room14, Room15, Room16, Room17, Room18, BossScene, GameOverScene, SaveScene]
-        : [AuthScene, MenuScene, LoginScene, MazmorraRoom1, Room1, Room2, Room3, Room4, Room5, Room6, Room7, Room8, Room9, Room10, Room11, Room12, Room13, Room14, Room15, Room16, Room17, Room18, BossScene, GameOverScene, SaveScene],
+        ? [DebugRoomSelector, ControlsScene, MenuScene, AuthScene, LoginScene, ProfileScene, AICompanionScene, MazmorraRoom1, MazmorraRoom2, MazmorraRoom3, MazmorraRoom4, MazmorraRoom5, MazmorraRoom6, MazmorraRoom7, MazmorraRoom8, MazmorraRoom9, MazmorraRoom10, MazmorraRoom11, MazmorraRoom12, MazmorraRoom13, Room1, Room2, Room3, Room4, Room5, Room6, Room7, Room8, Room9, Room10, Room11, Room12, Room13, Room14, Room15, Room16, Room17, Room18, Room19, BossScene, GameOverScene, SaveScene]
+        : [AuthScene, ControlsScene, MenuScene, LoginScene, AICompanionScene, ProfileScene, MazmorraRoom1, MazmorraRoom2, MazmorraRoom3, MazmorraRoom4, MazmorraRoom5, MazmorraRoom6, MazmorraRoom7, MazmorraRoom8, MazmorraRoom9, MazmorraRoom10, MazmorraRoom11, MazmorraRoom12, MazmorraRoom13, Room1, Room2, Room3, Room4, Room5, Room6, Room7, Room8, Room9, Room10, Room11, Room12, Room13, Room14, Room15, Room16, Room17, Room18, Room19, BossScene, GameOverScene, SaveScene],
+    
     physics: {
         default: 'arcade',
-        arcade: { debug: true }
+        arcade: { debug: false }
     },
-    pixelArt: true,
-    roundPixels: true
+    
+    pixelArt: true,      // ← Ya lo tienes, perfecto
+    roundPixels: true,   // ← Ya lo tienes, perfecto
 };
 
 async function init() {
@@ -64,6 +96,10 @@ async function init() {
     document.body.removeChild(primer);
 
     window.game = new Phaser.Game(config);
+    
+    // Crear servicio Gemini global
+    window.game.geminiService = new GeminiService(GEMINI_API_KEY);
+    console.log('[Gemini] Servicio inicializado correctamente');
 }
 
 init();

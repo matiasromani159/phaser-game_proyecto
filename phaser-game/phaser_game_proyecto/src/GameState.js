@@ -1,7 +1,3 @@
-// ─────────────────────────────────────────────────────────────
-// GameState.js — Estado global compartido entre todas las escenas
-// ─────────────────────────────────────────────────────────────
-
 const GameState = {
     // ── Jugador ──────────────────────────────────
     playerName  : 'KRIS',
@@ -13,32 +9,38 @@ const GameState = {
     segundos      : 0,
     roomActual    : 'Room1',
     playerSpawn   : { x: 200, y: 200 },
-    monstersDead  : [],   // array de strings: 'Room1_cat_0', 'MazmorraRoom1_lizard_1', etc.
-    npcsVistos    : [],   // array de strings: 'room3_tenna', etc.
+    monstersDead  : [],
+    npcsVistos    : [],
 
-    // ─────────────────────────────────────────────
-    // GUARDAR en localStorage + servidor PHP
-    // ─────────────────────────────────────────────
+    // ── Inventario / Puertas ──────────────────────
+    tieneLlave          : false,
+    puertaRoom19Abierta : false,
+
+    // ── Barco ─────────────────────────────────────
+    enBarco       : false,
+
     guardar() {
         const data = {
-            playerName  : this.playerName,
-            playerLevel : this.playerLevel,
-            playerHP    : this.playerHP,
-            playerHPMax : this.playerHPMax,
-            segundos    : this.segundos,
-            roomActual  : this.roomActual,
-            playerSpawn : this.playerSpawn,
-            monstersDead: this.monstersDead,
-            npcsVistos  : this.npcsVistos,
-            timestamp   : new Date().toISOString()
+            playerName          : this.playerName,
+            playerLevel         : this.playerLevel,
+            playerHP            : this.playerHP,
+            playerHPMax         : this.playerHPMax,
+            segundos            : this.segundos,
+            roomActual          : this.roomActual,
+            playerSpawn         : this.playerSpawn,
+            monstersDead        : this.monstersDead,
+            npcsVistos          : this.npcsVistos,
+            enBarco             : this.enBarco,
+            tieneLlave          : this.tieneLlave,
+            puertaRoom19Abierta : this.puertaRoom19Abierta,
+            timestamp           : new Date().toISOString()
         };
 
-        // 1. Local (siempre)
         localStorage.setItem('deltarune_save', JSON.stringify(data));
 
-        // 2. Servidor PHP (si está disponible)
         fetch('/php/guardar.php', {
             method : 'POST',
+             credentials: 'include', 
             headers: { 'Content-Type': 'application/json' },
             body   : JSON.stringify(data)
         })
@@ -49,24 +51,24 @@ const GameState = {
         return data;
     },
 
-    // ─────────────────────────────────────────────
-    // CARGAR desde localStorage
-    // ─────────────────────────────────────────────
     cargar() {
         const raw = localStorage.getItem('deltarune_save');
         if (!raw) return false;
 
         try {
             const data = JSON.parse(raw);
-            this.playerName   = data.playerName   ?? 'KRIS';
-            this.playerLevel  = data.playerLevel  ?? 1;
-            this.playerHP     = data.playerHP     ?? 100;
-            this.playerHPMax  = data.playerHPMax  ?? 100;
-            this.segundos     = data.segundos     ?? 0;
-            this.roomActual   = data.roomActual   ?? 'Room1';
-            this.playerSpawn  = data.playerSpawn  ?? { x: 200, y: 200 };
-            this.monstersDead = data.monstersDead ?? [];
-            this.npcsVistos   = data.npcsVistos   ?? [];
+            this.playerName          = data.playerName          ?? 'KRIS';
+            this.playerLevel         = data.playerLevel         ?? 1;
+            this.playerHP            = data.playerHP            ?? 100;
+            this.playerHPMax         = data.playerHPMax         ?? 100;
+            this.segundos            = data.segundos            ?? 0;
+            this.roomActual          = data.roomActual          ?? 'Room1';
+            this.playerSpawn         = data.playerSpawn         ?? { x: 200, y: 200 };
+            this.monstersDead        = data.monstersDead        ?? [];
+            this.npcsVistos          = data.npcsVistos          ?? [];
+            this.enBarco             = data.enBarco             ?? false;
+            this.tieneLlave          = data.tieneLlave          ?? false;
+            this.puertaRoom19Abierta = data.puertaRoom19Abierta ?? false;
             return true;
         } catch (e) {
             console.warn('[Save] Error al cargar save:', e);
@@ -74,9 +76,6 @@ const GameState = {
         }
     },
 
-    // ─────────────────────────────────────────────
-    // UTILIDADES
-    // ─────────────────────────────────────────────
     haySave() {
         return !!localStorage.getItem('deltarune_save');
     },
@@ -86,22 +85,16 @@ const GameState = {
         fetch('/php/borrar.php', { method: 'POST' }).catch(() => {});
     },
 
-    // Registra un monstruo como derrotado
     matarMonstruo(id) {
-        if (!this.monstersDead.includes(id)) {
-            this.monstersDead.push(id);
-        }
+        if (!this.monstersDead.includes(id)) this.monstersDead.push(id);
     },
 
     estaMuerto(id) {
         return this.monstersDead.includes(id);
     },
 
-    // Registra un NPC como ya visto/hablado
     verNpc(id) {
-        if (!this.npcsVistos.includes(id)) {
-            this.npcsVistos.push(id);
-        }
+        if (!this.npcsVistos.includes(id)) this.npcsVistos.push(id);
     },
 
     estaVisto(id) {

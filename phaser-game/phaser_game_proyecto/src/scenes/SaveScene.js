@@ -184,6 +184,7 @@ export default class SaveScene extends Phaser.Scene {
 
         fetch('/php/guardar.php', {
             method : 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body   : JSON.stringify(saveData)
         })

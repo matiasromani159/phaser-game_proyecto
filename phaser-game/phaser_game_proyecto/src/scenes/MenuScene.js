@@ -1,9 +1,5 @@
 import GameState from '../GameState.js';
 
-/**
- * MenuScene — Menú principal estilo Deltarune
- * Opciones: NUEVA PARTIDA / CONTINUAR (si hay save) / OPCIONES (futuro)
- */
 export default class MenuScene extends Phaser.Scene {
     constructor() {
         super({ key: 'MenuScene' });
@@ -15,12 +11,12 @@ export default class MenuScene extends Phaser.Scene {
         this.load.image('spr_heart',  '/src/assets/sprites/spr_heart.png');
     }
 
-    create() {
+    create(data) {
         const W = this.scale.width;
         const H = this.scale.height;
 
         this.closing = false;
-        this.coord   = 0;   // índice de opción seleccionada
+        this.coord   = 0;
 
         // ── Música ────────────────────────────────
         this.music = this.sound.add('menu', { loop: true, volume: 0.5 });
@@ -35,30 +31,49 @@ export default class MenuScene extends Phaser.Scene {
         this.add.rectangle(0, 0, W, H, 0x000000).setOrigin(0);
 
         // ── Título ────────────────────────────────
-        this.add.text(W / 2, H * 0.22, 'DELTARUNE', {
+        this.add.text(W / 2, H * 0.22, 'DELTASPRINT', {
             fontFamily: 'UndertaleFont',
             fontSize  : '36px',
             color     : '#ffffff'
         }).setOrigin(0.5).setResolution(10);
 
-        this.add.text(W / 2, H * 0.36, '— Chapter ? —', {
+        this.add.text(W / 2, H * 0.36, '—  —', {
             fontFamily: 'UndertaleFont',
             fontSize  : '14px',
             color     : '#888888'
         }).setOrigin(0.5).setResolution(10);
 
+        // ── Datos del usuario logueado ────────────
+        this.username = data?.username || this.registry.get('username') || null;
+        if (this.username) {
+            this.add.text(W / 2, H * 0.42, `Jugador: ${this.username}`, {
+                fontFamily: 'UndertaleFont',
+                fontSize  : '12px',
+                color     : '#ffff00'
+            }).setOrigin(0.5).setResolution(10);
+        }
+
         // ── Opciones ──────────────────────────────
         const haySave = GameState.haySave();
 
         this.opciones = [
-            { label: 'NUEVA PARTIDA', action: () => this._nuevaPartida() },
+            { label: 'NUEVA PARTIDA', action: () => this._nuevaPartida(), overlay: false },
         ];
 
         if (haySave) {
-            this.opciones.push({ label: 'CONTINUAR', action: () => this._continuar() });
+            this.opciones.push({ label: 'CONTINUAR', action: () => this._continuar(), overlay: false });
         }
 
-        // Si hay save, muestra sus datos como subtítulo de CONTINUAR
+        this.opciones.push({ label: 'CONTROLES', action: () => this._mostrarControles(), overlay: true });
+
+        if (this.username) {
+            this.opciones.push({ label: 'PERFIL', action: () => this._irPerfil(), overlay: false });
+        }
+
+        if (this.username) {
+            this.opciones.push({ label: 'CERRAR SESIÓN', action: () => this._logout(), overlay: false });
+        }
+
         this._saveInfo = null;
         if (haySave) {
             try {
@@ -69,35 +84,37 @@ export default class MenuScene extends Phaser.Scene {
 
         const startY  = H * 0.56;
         const stepY   = 32;
+        const btnX    = W / 2 - 60; 
         this._btnTexts = [];
 
         this.opciones.forEach((op, i) => {
-            const t = this.add.text(W / 2 + 14, startY + i * stepY, op.label, {
+            const t = this.add.text(btnX + 24, startY + i * stepY, op.label, {
                 fontFamily: 'UndertaleFont',
                 fontSize  : '18px',
                 color     : '#ffffff'
-            }).setOrigin(0.5).setResolution(10);
+            }).setOrigin(0, 0.5).setResolution(10);
             this._btnTexts.push(t);
         });
 
-        // Subtítulo del save (room + tiempo)
         if (this._saveInfo) {
             const idx     = this.opciones.findIndex(o => o.label === 'CONTINUAR');
-            const min     = Math.floor((this._saveInfo.segundos ?? 0) / 60);
-            const sec     = (this._saveInfo.segundos ?? 0) % 60;
-            const secStr  = sec < 10 ? '0' + sec : String(sec);
-            const subtext = `${this._saveInfo.roomActual ?? '???'}  ${min}:${secStr}`;
+            if (idx >= 0) {
+                const min     = Math.floor((this._saveInfo.segundos ?? 0) / 60);
+                const sec     = (this._saveInfo.segundos ?? 0) % 60;
+                const secStr  = sec < 10 ? '0' + sec : String(sec);
+                const subtext = `${this._saveInfo.roomActual ?? '???'}  ${min}:${secStr}`;
 
-            this.add.text(W / 2 + 14, startY + idx * stepY + 18, subtext, {
-                fontFamily: 'UndertaleFont',
-                fontSize  : '10px',
-                color     : '#555577'
-            }).setOrigin(0.5).setResolution(10);
+                this.add.text(W / 2, startY + idx * stepY + 18, subtext, {
+                    fontFamily: 'UndertaleFont',
+                    fontSize  : '10px',
+                    color     : '#555577'
+                }).setOrigin(0.5).setResolution(10);
+            }
         }
 
         // ── Cursor corazón ────────────────────────
         this.heartCursor = this.add.image(
-            W / 2 - 50, startY, 'spr_heart'
+            btnX, startY, 'spr_heart'
         ).setOrigin(0.5).setScrollFactor(0);
 
         // ── Teclado ───────────────────────────────
@@ -107,6 +124,15 @@ export default class MenuScene extends Phaser.Scene {
 
         this._buffer = 10;
         this._actualizarCursor();
+
+        // Al reanudar desde ControlsScene
+        this.events.on('resume', () => {
+            this.closing = false;
+            this._buffer = 10;
+            this.cameras.main.setAlpha(1);
+            this.cameras.main.setVisible(true);
+            this.cameras.main.fadeIn(200, 0, 0, 0);
+        });
 
         this.cameras.main.fadeIn(500, 0, 0, 0);
     }
@@ -137,12 +163,18 @@ export default class MenuScene extends Phaser.Scene {
         }
     }
 
+    _mostrarControles() {
+        this.scene.pause();
+        this.scene.launch('ControlsScene', { volverA: 'MenuScene' });
+    }
+
     _actualizarCursor() {
         const W      = this.scale.width;
         const startY = this.scale.height * 0.56;
         const stepY  = 32;
+        const btnX   = W / 2 - 60;
 
-        this.heartCursor.setY(startY + this.coord * stepY);
+        this.heartCursor.setPosition(btnX, startY + this.coord * stepY);
 
         this._btnTexts.forEach((t, i) => {
             t.setColor(i === this.coord ? '#ffffff' : '#666666');
@@ -151,16 +183,41 @@ export default class MenuScene extends Phaser.Scene {
 
     _confirmar() {
         if (this.closing) return;
+        
+        const op = this.opciones[this.coord];
+        
+        // SI ES OVERLAY (controles), no hacer fadeOut, ejecutar directo
+        if (op.overlay) {
+            op.action();
+            return;
+        }
+        
         this.closing = true;
         this.cameras.main.fadeOut(400, 0, 0, 0);
         this.cameras.main.once('camerafadeoutcomplete', () => {
             this.music.stop();
-            this.opciones[this.coord].action();
+            op.action();
+        });
+    }
+
+    _irPerfil() {
+        this.scene.start('ProfileScene');
+    }
+
+    _logout() {
+        fetch('/php/logout.php', {
+            method: 'POST',
+            credentials: 'include'
+        }).finally(() => {
+            GameState.borrarSave();
+            this.registry.remove('userId');
+            this.registry.remove('username');
+            this.username = null;
+            this.scene.start('AuthScene');
         });
     }
 
     _nuevaPartida() {
-        // Resetea el estado global
         GameState.playerName   = 'KRIS';
         GameState.playerLevel  = 1;
         GameState.playerHP     = 100;
@@ -178,7 +235,6 @@ export default class MenuScene extends Phaser.Scene {
 
     _continuar() {
         if (!GameState.cargar()) {
-            // Si falla la carga, nueva partida
             this._nuevaPartida();
             return;
         }

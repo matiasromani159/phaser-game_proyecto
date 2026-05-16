@@ -196,10 +196,8 @@ export default class MonsterCatSinging extends MonsterBase {
         if (this._hurtEvent) { this._hurtEvent.remove(); this._hurtEvent = null; }
         if (this._hurtSprite) { this._hurtSprite.destroy(); this._hurtSprite = null; }
 
-        // Despertar al SilentCat si existe en la escena
-        if (this.scene.silentCats) {
-            this.scene.silentCats.forEach(cat => cat.wakeUp?.());
-        }
+        // ELIMINADO: No despertar SilentCats desde aquí
+        // MazmorraRoom5 se encarga de despertarlos uno por uno en su update()
 
         this.play('monster-die');
         this.once('animationcomplete', () => this.destroy());

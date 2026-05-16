@@ -162,7 +162,8 @@ export default class BossScene extends Phaser.Scene {
         this._crearBossHUD();
         this._crearColisiones();
 
-       this.dialogue = new DialogueSystem(this, { fontSize: 16, fontFamily: 'PrStart' });
+        // Inicializar DialogueSystem ANTES de cualquier intro
+        this.dialogue = new DialogueSystem(this, { fontSize: 16, fontFamily: 'PrStart' });
 
         this.events.on('boss-onfire', ({ active, x, y }) => {
             this._onFireImg.setVisible(active);
@@ -230,13 +231,133 @@ export default class BossScene extends Phaser.Scene {
         });
 
         this._flamePathAngle = 0;
+        
+        // ← CAMBIO CLAVE: leer flag de intro oscura
+        this._introOscura = data?.introOscura ?? false;
+        
         this._iniciarIntro();
     }
 
-    // ─────────────────────────────────────────────────────────
-    // INTRO
-    // ─────────────────────────────────────────────────────────
+    // ═════════════════════════════════════════════════════════
+    // INTRO (UNIFICADO)
+    // ═════════════════════════════════════════════════════════
+    
     _iniciarIntro() {
+        if (this._introOscura) {
+            this._iniciarIntroOscura();
+            return;
+        }
+        this._iniciarIntroNormal();
+    }
+
+    // ── Intro oscura (desde alcantarilla) ────────────────────────
+    _iniciarIntroOscura() {
+        this._introActiva = true;
+        this._introOscura = true;
+
+        // 1. Fondo negro
+        this.cameras.main.setBackgroundColor('#000000');
+
+        // 2. JUGADOR: visible, inmóvil, SIN tint, CON depth alto para verse sobre todo
+        this.player.setVisible(true);
+        this.player.setActive(false);
+        this.player.anims.stop();
+        this.player.setVelocity(0, 0);
+        this.player.clearTint();
+        this.player.setDepth(500);  // ← ALTO: sobre mapa y overlay
+
+         // ← MIRAR ARRIBA: establecer dirección y textura idle
+        this.player.lastDir = 'up';
+        if (this.player._setIdleTexture) {
+            this.player._setIdleTexture('up');
+        } else if (this.player.setTexture) {
+            // Fallback si no existe _setIdleTexture
+            this.player.setTexture('up0');
+        }
+
+        this.player.barra?.setVisible(false);
+        this.player.healthBarSprite?.setVisible(false);
+
+        // 3. BOSS: oculto (no aparece aún)
+        this.boss.setVisible(false);
+        this.boss.body.enable = false;
+
+        // 4. OSCURECER MAPA: tintar todas las tiles a negro
+        this._aplicarTintGlobal(0x000000);
+
+        // 5. OVERLAY NEGRO a depth BAJO (menor que diálogo 200 y jugador 500)
+        // NO debe cubrir UI ni personaje
+        this._oscuroOverlay = this.add.rectangle(
+            0, 0,
+            this.scale.width * 2, this.scale.height * 2,
+            0x000000, 1
+        ).setOrigin(0).setDepth(100).setScrollFactor(0);  // ← 100 < 200 (diálogo)
+
+        // 6. Pausa dramática, luego diálogos
+        this.time.delayedCall(800, () => {
+            this._mostrarDialogosIntroOscura();
+        });
+    }
+
+    // Aplica tint a TODO el mapa (ground + walls)
+    _aplicarTintGlobal(color) {
+        const COLS = this.map?.width ?? 12;
+        const ROWS = this.map?.height ?? 9;
+        for (let col = 0; col < COLS; col++) {
+            for (let row = 0; row < ROWS; row++) {
+                const tg = this.groundLayer?.getTileAt(col, row);
+                if (tg) tg.tint = color;
+                const tw = this.wallsLayer?.getTileAt(col, row);
+                if (tw) tw.tint = color;
+            }
+        }
+    }
+
+    _mostrarDialogosIntroOscura() {
+        this.dialogue.show([
+            "...Oh...Kris...Oh.../",
+            "¿Es divertido, Kris?/",
+            "Veo que te gusta juguetear./",
+            "Es por eso que lo estás buscando, ¿verdad?./",
+            "¿De verdad crees que asi vas a conseguir lo que quieres?.../",
+            "!Puedo ver en la oscuridad, sabes!/",
+            "Pero la pregunta es/",
+
+        ], () => {
+            this.dialogue.show([
+                
+                "¿Puedes tu?",
+            ], () => {
+                this._encenderLuces();
+            });
+        });
+    }
+
+    _encenderLuces() {
+        // Fade out del overlay
+        this.tweens.add({
+            targets:  this._oscuroOverlay,
+            alpha:    0,
+            duration: 1500,
+            ease:     'Power2',
+            onComplete: () => {
+                this._oscuroOverlay.destroy();
+                this._oscuroOverlay = null;
+                
+                // Restaurar colores del mapa (fase 1)
+                this._aplicarTintFase(1);
+                
+                // Jugador vuelve a depth normal
+                this.player.setDepth(0);
+                
+                this._introOscura = false;
+                this._iniciarIntroNormal();
+            }
+        });
+    }
+
+    // ── Intro normal del boss ─────────────────
+    _iniciarIntroNormal() {
         this._introActiva   = true;
         this._introLen      = 200;
         this._introDir      = 0;
@@ -246,14 +367,14 @@ export default class BossScene extends Phaser.Scene {
         this._introCon      = 0;
         this._introFrameIdx = 0;
         this._introFrameAcc = 0;
-        this._introLaughing = false; // ← bloquea el idle mientras dura la risa
+        this._introLaughing = false;
 
         const BOSS_SCALE = 1.125;
 
         this.boss.setVisible(false);
         this.boss.body.enable = false;
 
-        this.player.setActive(false).setVisible(true);  // visible pero sin control
+        this.player.setActive(false).setVisible(true);
         this.player.anims.stop();
         this.player.setVelocity(0, 0);
 
@@ -268,9 +389,8 @@ export default class BossScene extends Phaser.Scene {
         this.sound.play('snd_board_mantle_move', { volume: 0.8 });
         this.cameras.main.fadeIn(400, 0, 0, 0);
 
-        // ── FIX 1: Ocultar HUD del jugador durante la intro ──
-        this.player.barra.setVisible(false);
-        this.player.healthBarSprite.setVisible(false);
+        this.player.barra?.setVisible(false);
+        this.player.healthBarSprite?.setVisible(false);
     }
 
     _tickIntro() {
@@ -320,7 +440,6 @@ export default class BossScene extends Phaser.Scene {
             this._introSiner++;
             const fy = Math.round((by + Math.sin(this._introSiner / 8) * 4) / 2) * 2;
 
-            // FIX 2: solo actualizar textura idle si NO está riendo
             if (!this._introLaughing) {
                 this._introImg.setTexture(frameKey);
             }
@@ -334,7 +453,6 @@ export default class BossScene extends Phaser.Scene {
         }
     }
 
-    // FIX 3: flag _introLaughing para que el tick no sobreescriba el sprite
     _playIntroLaugh() {
         this.sound.play('snd_board_mantle_laugh_mid', { detune: 500 });
         this._introLaughing = true;
@@ -351,7 +469,7 @@ export default class BossScene extends Phaser.Scene {
                 this._introImg?.setTexture(`mantle_laugh_${laughFrame}`);
                 if (elapsed >= 50) {
                     t.remove();
-                    this._introLaughing = false; // volver al idle
+                    this._introLaughing = false;
                 }
             }
         });
@@ -367,9 +485,8 @@ export default class BossScene extends Phaser.Scene {
 
         this.player.setActive(true).setVisible(true);
 
-        // ── FIX 1: Restaurar HUD del jugador al terminar la intro
-        this.player.barra.setVisible(true);
-        this.player.healthBarSprite.setVisible(true);
+        this.player.barra?.setVisible(true);
+        this.player.healthBarSprite?.setVisible(true);
 
         this.music.play();
         this._introActiva = false;
@@ -526,36 +643,69 @@ export default class BossScene extends Phaser.Scene {
         });
     }
 
+    // ═════════════════════════════════════════════════════════
+    // FINALIZAR OUTRO — VUELVE AL MENÚ PRINCIPAL
+    // ═════════════════════════════════════════════════════════
     _finalizarOutro() {
         if (this.boss?.active) this.boss.destroy();
         if (this.musicNes?.isPlaying) this.musicNes.stop();
+        
+        // ← CAMBIO: reiniciar GameState y volver al menú principal
+        this._reiniciarJuego();
+        
         this.cameras.main.fadeOut(1500, 0, 0, 0);
         this.cameras.main.once('camerafadeoutcomplete', () => {
-            this.scene.start('SaveScene', {
-                callerScene : 'BossScene',
-                segundos    : this.segundos,
-                playerHP    : this.player.vida,
-                roomName    : 'Campo Nevado',
-            });
+            this.scene.start('MenuScene');
         });
     }
 
-    // ─────────────────────────────────────────────────────────
-    // UPDATE
-    // ─────────────────────────────────────────────────────────
+    // Reinicia todo el progreso del jugador
+    _reiniciarJuego() {
+        GameState.playerName   = 'KRIS';
+        GameState.playerLevel  = 1;
+        GameState.playerHP     = 100;
+        GameState.playerHPMax  = 100;
+        GameState.segundos     = 0;
+        GameState.roomActual   = 'Room1';
+        GameState.playerSpawn  = { x: 200, y: 200 };
+        GameState.monstersDead = [];
+        GameState.tieneLlave   = false;
+        GameState.puertaRoom19Abierta = false;
+        // Añade aquí cualquier otra variable de GameState que quieras reiniciar
+    }
+
+    // ═════════════════════════════════════════════════════════
+    // UPDATE — CORREGIDO: diálogos funcionan durante intro
+    // ═════════════════════════════════════════════════════════
     update(time, delta) {
+        // ── SIEMPRE actualizar diálogos primero ─────────────────
+        if (this.dialogue?.isActive) {
+            this.dialogue.update();
+        }
+
+        // ── INTRO ACTIVA ─────────────────────────────────────────
         if (this._introActiva) {
+            // Durante intro oscura: solo diálogos, NO tickIntro
+            if (this._introOscura) {
+                return;
+            }
+            // Durante intro normal: tick del boss
             this._tickIntro();
             return;
         }
 
+        // ── OUTRO ────────────────────────────────────────────────
         if (this._outroActivo) {
-            this._tickOutro();
+            // Si hay diálogo activo, el outro ya lo maneja arriba
+            if (!this.dialogue?.isActive) {
+                this._tickOutro();
+            }
             return;
         }
 
         if (this.gameIsOver) return;
 
+        // ── JUEGO NORMAL ─────────────────────────────────────────
         this.player.update(this.cursors);
 
         const b = this.boss;

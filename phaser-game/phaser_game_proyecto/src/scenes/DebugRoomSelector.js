@@ -2,22 +2,6 @@ const IS_DEBUG = true;
 
 export default class DebugRoomSelector extends Phaser.Scene {
 
-    getRooms() {
-        return [
-            { key: 'Room1',         label: 'Room 1',            category: 'Superficie', spawn: { x: 200, y: 200 } },
-            { key: 'MazmorraRoom1', label: 'Mazmorra - Sala 1', category: 'Mazmorras',  spawn: { x: 100, y: 100 } },
-            { key: 'Room2',         label: 'Room 2',            category: 'Superficie', spawn: { x: 200, y: 200 } },
-            { key: 'Room3',         label: 'Room 3',            category: 'Superficie', spawn: { x: 200, y: 200 } },
-            { key: 'Room4',         label: 'Room 4',            category: 'Superficie', spawn: { x: 200, y: 200 } },
-            { key: 'Room5',         label: 'Room 5',            category: 'Superficie', spawn: { x: 200, y: 200 } },
-            { key: 'Room6',         label: 'Room 6',            category: 'Superficie', spawn: { x: 200, y: 200 } },
-            { key: 'Room7',         label: 'Room 7',            category: 'Superficie', spawn: { x: 200, y: 200 } },
-            { key: 'Room8',         label: 'Room 8',            category: 'Superficie', spawn: { x: 200, y: 200 } },
-            { key: 'Room9',         label: 'Room 9',            category: 'Superficie', spawn: { x: 200, y: 200 } },
-            { key: 'BossScene',     label: 'Boss — Shadow Mantle', category: 'Jefes',   spawn: { x: 216, y: 270 } },
-        ];
-    }
-
     constructor() {
         super({ key: 'DebugRoomSelector' });
     }
@@ -39,182 +23,226 @@ export default class DebugRoomSelector extends Phaser.Scene {
             this.add.rectangle(0, y, W, 1, 0x000000, 0.25).setOrigin(0);
 
         // ── Título ────────────────────────────────
-        this.add.text(W / 2, 28, '[ DEBUG ] SELECTOR DE ROOMS', {
+        this.add.text(W / 2, 40, '[ DEBUG ] TELEPORT A ROOM', {
             fontFamily   : 'UndertaleFont, monospace',
             fontSize     : '14px',
             fill         : '#ff4444',
             letterSpacing: 2,
         }).setOrigin(0.5).setResolution(10);
 
-        this.add.text(W / 2, 50, 'Z / ENTER para entrar  ·  ↑↓ para navegar  ·  rueda para hacer scroll', {
+        this.add.text(W / 2, 65, 'Escribe la key de la room y pulsa ENTER', {
             fontFamily: 'UndertaleFont, monospace',
             fontSize  : '10px',
             fill      : '#555577',
         }).setOrigin(0.5).setResolution(10);
 
-        this.add.rectangle(W / 2, 64, W - 40, 1, 0x333355).setOrigin(0.5, 0);
+        this.add.rectangle(W / 2, 80, W - 40, 1, 0x333355).setOrigin(0.5, 0);
 
-        // ── Zona de clip (máscara para el scroll) ─
-        const LIST_TOP  = 72;
-        const LIST_BOT  = H - 16;
-        const LIST_H    = LIST_BOT - LIST_TOP;
+        // ── Campo de texto visual ─────────────────
+        const inputBg = this.add.rectangle(W / 2, 120, 200, 28, 0x1a1a2e)
+            .setOrigin(0.5)
+            .setStrokeStyle(2, 0x4444aa);
 
-        // Contenedor scrolleable
-        this._listContainer = this.add.container(0, LIST_TOP);
+        this._inputText = this.add.text(W / 2, 120, '', {
+            fontFamily: 'UndertaleFont, monospace',
+            fontSize  : '14px',
+            fill      : '#ffffff',
+        }).setOrigin(0.5).setResolution(10);
 
-        const maskShape = this.make.graphics({ x: 0, y: 0, add: false });
-        maskShape.fillRect(0, LIST_TOP, W, LIST_H);
-        this._listContainer.setMask(maskShape.createGeometryMask());
+        // Cursor parpadeante
+        this._cursor = this.add.text(W / 2 + this._inputText.width / 2 + 2, 120, '_', {
+            fontFamily: 'UndertaleFont, monospace',
+            fontSize  : '14px',
+            fill      : '#ff4444',
+        }).setOrigin(0, 0.5).setResolution(10);
 
-        // ── Lista de rooms ────────────────────────
-        const rooms    = this.getRooms();
-        this.selectedIdx = 0;
-        this.roomItems   = [];
+        // ── Historial / sugerencias ────────────────
+        this._history = this.registry.get('debug_room_history') || [];
+        this._historyIndex = -1;
+        this._suggestions = [];
 
-        const itemH  = 26;
-        let offsetY  = 8; // relativo al container
-        let lastCat  = null;
+        this._suggestionText = this.add.text(W / 2, 155, '', {
+            fontFamily: 'UndertaleFont, monospace',
+            fontSize  : '10px',
+            fill      : '#666688',
+        }).setOrigin(0.5).setResolution(10);
 
-        rooms.forEach((room, i) => {
-            if (room.category !== lastCat) {
-                lastCat = room.category;
-                const catLabel = this.add.text(30, offsetY, `— ${room.category} —`, {
-                    fontFamily: 'UndertaleFont, monospace',
-                    fontSize  : '9px',
-                    fill      : '#4444aa',
-                }).setResolution(10);
-                this._listContainer.add(catLabel);
-                offsetY += 16;
-            }
+        // ── Lista de rooms conocidas (para autocompletar) ─
+        this._knownRooms = [
+            'MenuScene',
+            'Room1', 'Room2', 'Room3', 'Room4', 'Room5',
+            'Room6', 'Room7', 'Room8', 'Room9', 'Room13',
+            'Room14', 'Room15', 'Room18',
+            'MazmorraRoom1', 'MazmorraRoom5', 'MazmorraRoom9', 'MazmorraRoom13',
+            'BossScene',
+        ];
 
-            const cursor = this.add.text(22, offsetY + itemH / 2, '♥', {
-                fontFamily: 'UndertaleFont, monospace',
-                fontSize  : '12px',
-                fill      : '#ff4444',
-            }).setOrigin(0, 0.5).setResolution(10).setAlpha(0);
+        // ── Mensaje de estado ─────────────────────
+        this._statusText = this.add.text(W / 2, 190, '', {
+            fontFamily: 'UndertaleFont, monospace',
+            fontSize  : '10px',
+            fill      : '#ff4444',
+        }).setOrigin(0.5).setResolution(10);
 
-            const label = this.add.text(42, offsetY + itemH / 2, room.label, {
-                fontFamily: 'UndertaleFont, monospace',
-                fontSize  : '13px',
-                fill      : '#ccccdd',
-            }).setOrigin(0, 0.5).setResolution(10);
+        // ── Controles ───────────────────────────────
+        this.add.text(W / 2, H - 50, [
+            'ENTER      →  Teletransportar',
+            '↑ / ↓      →  Historial / Sugerencias',
+            'ESC        →  Borrar todo',
+            'BACKSPACE  →  Borrar último carácter',
+        ].join('\n'), {
+            fontFamily: 'UndertaleFont, monospace',
+            fontSize  : '9px',
+            fill      : '#444466',
+            align     : 'center',
+            lineSpacing: 4,
+        }).setOrigin(0.5).setResolution(10);
 
-            const keyText = this.add.text(W - 30, offsetY + itemH / 2, room.key, {
-                fontFamily: 'UndertaleFont, monospace',
-                fontSize  : '9px',
-                fill      : '#333355',
-            }).setOrigin(1, 0.5).setResolution(10);
+        // ── Input de teclado ────────────────────────
+        this._buffer = '';
+        this._cursorVisible = true;
+        this._cursorTimer = 0;
 
-            // Zona interactiva — en coordenadas de pantalla, se recalcula con scroll
-            const zone = this.add.zone(0, LIST_TOP + offsetY, W, itemH).setOrigin(0);
-            zone.setInteractive();
-            zone.on('pointerover', () => { this.selectedIdx = i; this._updateCursors(); });
-            zone.on('pointerdown', () => { this.selectedIdx = i; this._launchRoom(); });
+        this.input.keyboard.on('keydown', (event) => this._onKeyDown(event));
 
-            this._listContainer.add([cursor, label, keyText]);
-            this.roomItems.push({ cursor, label, zone, room, localY: offsetY, itemH });
-            offsetY += itemH;
-        });
-
-        // ── Scroll ────────────────────────────────
-        this._scrollY    = 0;
-        this._totalH     = offsetY;
-        this._listTop    = LIST_TOP;
-        this._listH      = LIST_H;
-        this._maxScroll  = Math.max(0, this._totalH - LIST_H);
-
-        this.input.on('wheel', (_p, _go, _dx, deltaY) => {
-            this._doScroll(deltaY * 0.5);
-        });
-
-        // Scrollbar visual
-        this._scrollbarBg   = this.add.rectangle(W - 6, LIST_TOP, 3, LIST_H, 0x222244).setOrigin(0.5, 0);
-        this._scrollbarThumb = this.add.rectangle(W - 6, LIST_TOP, 3, 20,    0x4444aa).setOrigin(0.5, 0);
-        this._updateScrollbar();
-
-        // ── Teclado ───────────────────────────────
-        this.cursors  = this.input.keyboard.createCursorKeys();
-        this.keyZ     = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
-        this.keyEnter = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
-
-        this._updateCursors();
+        this._updateSuggestions();
     }
 
-    // ── Scroll helpers ────────────────────────────
-    _doScroll(delta) {
-        this._scrollY = Phaser.Math.Clamp(this._scrollY + delta, 0, this._maxScroll);
-        this._listContainer.y = this._listTop - this._scrollY;
-
-        // Recolocar zonas interactivas (están fuera del container)
-        this.roomItems.forEach(item => {
-            item.zone.y = this._listTop + item.localY - this._scrollY;
-        });
-
-        this._updateScrollbar();
+    update(time) {
+        // Cursor parpadeante
+        this._cursorTimer += 1;
+        if (this._cursorTimer > 30) {
+            this._cursorTimer = 0;
+            this._cursorVisible = !this._cursorVisible;
+            this._cursor.setAlpha(this._cursorVisible ? 1 : 0);
+        }
     }
 
-    _updateScrollbar() {
-        if (this._maxScroll <= 0) {
-            this._scrollbarBg.setVisible(false);
-            this._scrollbarThumb.setVisible(false);
+    _onKeyDown(event) {
+        const key = event.key;
+
+        // ── Confirmar teleport ─────────────────────
+        // SOLO ENTER confirma. La Z ya no interfiere con la escritura.
+        if (key === 'Enter') {
+            this._launchRoom(this._buffer.trim());
             return;
         }
-        const ratio      = this._listH / this._totalH;
-        const thumbH     = Math.max(20, this._listH * ratio);
-        const thumbRange = this._listH - thumbH;
-        const thumbY     = this._listTop + (this._scrollY / this._maxScroll) * thumbRange;
 
-        this._scrollbarThumb.setSize(3, thumbH).setY(thumbY);
-    }
-
-    // ── Selección y navegación ────────────────────
-    update() {
-        if (Phaser.Input.Keyboard.JustDown(this.cursors.up)) {
-            this.selectedIdx = (this.selectedIdx - 1 + this.roomItems.length) % this.roomItems.length;
-            this._updateCursors();
-            this._scrollToSelected();
+        // ── Navegar historial / sugerencias ────────
+        if (key === 'ArrowUp') {
+            if (this._suggestions.length > 0 && this._historyIndex === -1) {
+                this._historyIndex = 0;
+                this._buffer = this._suggestions[0];
+            } else if (this._historyIndex < this._suggestions.length - 1) {
+                this._historyIndex++;
+                this._buffer = this._suggestions[this._historyIndex];
+            } else if (this._history.length > 0) {
+                const idx = Math.min(this._historyIndex + 1, this._history.length - 1);
+                if (idx !== this._historyIndex) {
+                    this._historyIndex = idx;
+                    this._buffer = this._history[this._history.length - 1 - idx];
+                }
+            }
+            this._updateDisplay();
+            return;
         }
-        if (Phaser.Input.Keyboard.JustDown(this.cursors.down)) {
-            this.selectedIdx = (this.selectedIdx + 1) % this.roomItems.length;
-            this._updateCursors();
-            this._scrollToSelected();
+
+        if (key === 'ArrowDown') {
+            if (this._historyIndex > -1) {
+                this._historyIndex--;
+                if (this._historyIndex === -1) {
+                    this._buffer = '';
+                } else if (this._historyIndex < this._suggestions.length) {
+                    this._buffer = this._suggestions[this._historyIndex];
+                } else {
+                    this._buffer = this._history[this._history.length - 1 - this._historyIndex];
+                }
+                this._updateDisplay();
+            }
+            return;
         }
-        if (Phaser.Input.Keyboard.JustDown(this.keyZ) ||
-            Phaser.Input.Keyboard.JustDown(this.keyEnter)) {
-            this._launchRoom();
+
+        // ── Borrar todo ────────────────────────────
+        if (key === 'Escape') {
+            this._buffer = '';
+            this._historyIndex = -1;
+            this._updateDisplay();
+            return;
+        }
+
+        // ── Borrar carácter ────────────────────────
+        if (key === 'Backspace') {
+            this._buffer = this._buffer.slice(0, -1);
+            this._historyIndex = -1;
+            this._updateDisplay();
+            return;
+        }
+
+        // Ignorar teclas de control (Shift, Ctrl, Alt, etc.)
+        if (key.length > 1 || event.ctrlKey || event.altKey || event.metaKey) return;
+
+        // ── Añadir carácter al buffer ──────────────
+        // Ahora la Z se escribe normalmente junto con cualquier letra/número
+        if (/^[a-zA-Z0-9_-]$/.test(key)) {
+            this._buffer += key;
+            this._historyIndex = -1;
+            this._updateDisplay();
         }
     }
 
-    // Asegura que el item seleccionado esté visible al navegar con teclado
-    _scrollToSelected() {
-        const item    = this.roomItems[this.selectedIdx];
-        if (!item) return;
-        const itemTop = item.localY;
-        const itemBot = item.localY + item.itemH;
-        const margin  = 10;
-
-        if (itemTop - this._scrollY < margin)
-            this._doScroll(itemTop - this._scrollY - margin);
-        else if (itemBot - this._scrollY > this._listH - margin)
-            this._doScroll(itemBot - this._scrollY - this._listH + margin);
+    _updateDisplay() {
+        this._inputText.setText(this._buffer);
+        this._cursor.setPosition(
+            this._inputText.x + this._inputText.width / 2 + 2,
+            this._cursor.y
+        );
+        this._updateSuggestions();
+        this._statusText.setText('');
     }
 
-    _updateCursors() {
-        this.roomItems.forEach((item, i) => {
-            const sel = i === this.selectedIdx;
-            item.cursor.setAlpha(sel ? 1 : 0);
-            item.label.setFill(sel ? '#ffffff' : '#ccccdd');
-        });
+    _updateSuggestions() {
+        const query = this._buffer.toLowerCase();
+        
+        if (query.length === 0) {
+            this._suggestions = [];
+            this._suggestionText.setText('');
+            return;
+        }
+
+        // Filtrar rooms conocidas que coincidan
+        this._suggestions = this._knownRooms
+            .filter(room => room.toLowerCase().includes(query))
+            .slice(0, 5);
+
+        if (this._suggestions.length > 0) {
+            const text = this._suggestions.map((r, i) => 
+                i === 0 ? `\cY${r}\c0` : r
+            ).join('  ·  ');
+            this._suggestionText.setText(`Sugerencias: ${text}`);
+        } else {
+            this._suggestionText.setText('Sin coincidencias en rooms conocidas');
+        }
     }
 
-    _launchRoom() {
-        const item = this.roomItems[this.selectedIdx];
-        if (!item) return;
-        this.cameras.main.fadeOut(300, 0, 0, 0);
+    _launchRoom(roomKey) {
+        if (!roomKey) {
+            this._statusText.setText('Escribe una room primero');
+            return;
+        }
+
+        // Guardar en historial
+        if (!this._history.includes(roomKey)) {
+            this._history.unshift(roomKey);
+            if (this._history.length > 10) this._history.pop();
+            this.registry.set('debug_room_history', this._history);
+        }
+
+        // Fade out y teleport
+        this.cameras.main.fadeOut(200, 0, 0, 0);
         this.cameras.main.once('camerafadeoutcomplete', () => {
-            this.scene.start(item.room.key, {
+            this.scene.start(roomKey, {
                 segundos    : 0,
-                playerSpawn : item.room.spawn,
+                playerSpawn : { x: 200, y: 200 },
                 fromDebug   : true,
             });
         });

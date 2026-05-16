@@ -1,9 +1,9 @@
 import MonsterBase from './MonsterBase.js';
 
 // ── Constantes fieles al GML ──────────────────────────────────
-const MAX_SPD          = 10;   // velocidad máxima (hspd/vspd cap)
-const MAX_HOMING       = 1.5;  // maxhomingfactor
-const HOMING_ACCEL     = 0.4;  // incremento de homingfactor por tick
+const MAX_SPD          = 5;    // era 10, ahora la mitad
+const MAX_HOMING       = 0.75; // era 1.5, ahora la mitad
+const HOMING_ACCEL     = 0.2;  // era 0.4, ahora la mitad  // incremento de homingfactor por tick
 const WAKE_FRAMES      = 8;    // frames de vibración antes de activarse
 const UPDATE_INTERVAL  = 2;    // corre cada 2 frames igual que GML
 

@@ -18,7 +18,7 @@ export default class RoomX extends BaseGameScene {
            
             ],
             monsters: [
-                
+                 { type: 'bluefish', x: 200, y: 200 },
             ],
 
             doors: {

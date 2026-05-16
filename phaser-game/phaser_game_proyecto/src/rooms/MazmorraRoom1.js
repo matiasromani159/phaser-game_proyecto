@@ -19,9 +19,16 @@ export default class MazmorraRoom1 extends BaseGameScene {
                 arriba:    null,
                 abajo:     null,
                 izquierda: null,
-                derecha:   null
+              derecha:   { goTo: 'MazmorraRoom2', spawn: { x: 36,  y: 162 } }
             }
         };
+    }
+
+    create(data) {
+        super.create(data);
+
+        // Fade in desde negro al entrar (encendiendo la pantalla)
+        this.cameras.main.fadeIn(1500, 0, 0, 0);
     }
 
     getDialogueConfig() {

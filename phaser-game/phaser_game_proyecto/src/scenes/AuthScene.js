@@ -34,7 +34,10 @@ export default class AuthScene extends Phaser.Scene {
                     this.registry.set('userId',   data.userId);
                     this.registry.set('username', data.username);
 
-                    this.scene.start('MenuScene', { hasSave: data.hasSave });
+                   this.scene.start('MenuScene', { 
+    hasSave: data.hasSave,
+    username: data.username  // ← AÑADIR ESTO
+});
                 } else {
                     this.scene.start('LoginScene');
                 }
